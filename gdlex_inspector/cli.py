@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 
@@ -12,6 +13,7 @@ from .platform_info import get_platform_summary
 from .report import _fmt_size, to_csv, to_html, to_json
 from .risk import risk_label_for_display, risk_style_for_display
 from .scanner import parse_size, scan_directory
+from .system_profile import detect_system_profile
 
 
 BANNER = "GD LEX Inspector v{version} — Diagnostic read-only disk inspection tool"
@@ -68,6 +70,32 @@ def cmd_gui(args: argparse.Namespace) -> int:
 
 def cmd_version(args: argparse.Namespace) -> int:
     print(f"gdlex-inspector {__version__}")
+    return 0
+
+
+def cmd_system_info(args: argparse.Namespace) -> int:
+    profile = detect_system_profile()
+    if args.json:
+        print(json.dumps(profile.to_dict(), indent=2, sort_keys=True))
+        return 0
+
+    print("GD LEX Inspector — System info")
+    print()
+    print(f"OS: {profile.os_family}")
+    print(f"Platform: {profile.platform}")
+    print(f"WSL: {'yes' if profile.is_wsl else 'no'}")
+    print(f"Desktop: {profile.desktop_environment or 'unknown'}")
+    print(f"Host: {profile.hostname or 'unknown'}")
+    print()
+    print("Mount rilevati:")
+    if not profile.mounts:
+        print("- none")
+    for mount in profile.mounts:
+        access = "ro" if mount.is_read_only else "rw"
+        print(
+            f"- {mount.mount_point:<28} {mount.fs_type:<12} "
+            f"{mount.role:<14} {access}"
+        )
     return 0
 
 
@@ -143,6 +171,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("version", help="Print version and exit.")
 
+    system_p = sub.add_parser(
+        "system-info",
+        help="Detect the operating system, environment, and mounted filesystems.",
+    )
+    system_p.add_argument(
+        "--json", action="store_true",
+        help="Print the system profile as JSON.",
+    )
+
     gui_p = sub.add_parser("gui", help="Launch the graphical interface (requires PySide6).")
     gui_p.add_argument(
         "--path", default="", metavar="DIR",
@@ -180,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "version":
         return cmd_version(args)
+    if args.command == "system-info":
+        return cmd_system_info(args)
     if args.command == "scan":
         return cmd_scan(args)
     if args.command == "gui":

@@ -97,6 +97,10 @@ python -m gdlex_inspector version
 # Aiuto
 python -m gdlex_inspector --help
 
+# Informazioni su sistema e filesystem
+python -m gdlex_inspector system-info
+python -m gdlex_inspector system-info --json
+
 # Scansione base
 python -m gdlex_inspector scan /percorso
 
@@ -115,6 +119,19 @@ python -m gdlex_inspector scan /percorso --csv report.csv
 # Escludi pattern
 python -m gdlex_inspector scan /percorso --exclude node_modules --exclude .git
 ```
+
+---
+
+## System information
+
+```bash
+gdlex-inspector system-info
+gdlex-inspector system-info --json
+```
+
+Il comando rileva sistema operativo, ambiente WSL o desktop e mount locali,
+Windows, di rete, temporanei, virtuali e FUSE. Il profilo è interamente
+read-only e costituisce la base per futuri profili di scansione intelligenti.
 
 ---
 
