@@ -5,6 +5,6 @@ Exec=gdlex-inspector gui
 Icon=gdlex-inspector
 Terminal=false
 Type=Application
-Categories=Utility;System;FileTools;
+Categories=Utility;FileTools;
 StartupNotify=true
 Keywords=disk;inspection;report;file;size;

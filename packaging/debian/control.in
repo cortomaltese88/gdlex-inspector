@@ -1,0 +1,10 @@
+Package: gdlex-inspector
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: STUDIO GD LEX
+Depends: python3 (>= 3.10), python3-pyside6
+Description: Read-only disk inspection and prudential reporting tool
+ GD LEX Inspector scans disk usage, classifies potentially sensitive data,
+ and exports prudential reports. It includes a PySide6 desktop interface.

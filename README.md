@@ -62,6 +62,30 @@ python -m gdlex_inspector --help
 
 ---
 
+## Pacchetto Debian locale
+
+Il pacchetto Debian include CLI, GUI, voce menu desktop e icona. La build non
+richiede `sudo` né accesso alla rete:
+
+```bash
+./scripts/build_deb.sh
+sudo apt install ./dist/gdlex-inspector_0.1.0_all.deb
+```
+
+Il pacchetto dipende da `python3` e `python3-pyside6`. Dopo l'installazione:
+
+```bash
+gdlex-inspector --help
+gdlex-inspector gui
+```
+
+La voce **GD LEX Inspector** viene installata nel menu applicazioni KDE/GNOME.
+La pubblicazione su un repository APT sarà un passaggio successivo; questa fase
+produce soltanto un pacchetto locale e non usa chiavi o token. I dettagli sono
+in [docs/packaging.md](docs/packaging.md).
+
+---
+
 ## Uso CLI
 
 ### Comandi principali

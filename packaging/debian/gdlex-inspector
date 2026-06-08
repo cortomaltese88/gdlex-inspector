@@ -1,0 +1,12 @@
+#!/usr/bin/python3
+"""System launcher for the Debian package."""
+
+import sys
+
+sys.path.insert(0, "/usr/lib/gdlex-inspector")
+
+from gdlex_inspector.cli import main
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

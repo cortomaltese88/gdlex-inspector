@@ -16,15 +16,15 @@ echo "=== gdlex-inspector smoke test ==="
 echo "Project root: $PROJECT_ROOT"
 echo ""
 
-echo "[1/8] --help"
+echo "[1/9] --help"
 $PYTHON -m gdlex_inspector --help > /dev/null
 echo "  OK"
 
-echo "[2/8] version"
+echo "[2/9] version"
 $PYTHON -m gdlex_inspector version
 echo "  OK"
 
-echo "[3/8] scan on temp directory"
+echo "[3/9] scan on temp directory"
 TMPDIR_TEST="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
 
@@ -39,7 +39,7 @@ $PYTHON -c "open('$TMPDIR_TEST/subdir/big.bin','wb').write(b'z'*102400)"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --top 5
 echo "  OK"
 
-echo "[4/8] export JSON"
+echo "[4/9] export JSON"
 JSON_OUT="$TMPDIR_TEST/report.json"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --json "$JSON_OUT" > /dev/null
 if [[ ! -s "$JSON_OUT" ]]; then
@@ -48,7 +48,7 @@ if [[ ! -s "$JSON_OUT" ]]; then
 fi
 echo "  OK: $JSON_OUT ($(wc -c < "$JSON_OUT") bytes)"
 
-echo "[5/8] export HTML"
+echo "[5/9] export HTML"
 HTML_OUT="$TMPDIR_TEST/report.html"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --html "$HTML_OUT" > /dev/null
 if [[ ! -s "$HTML_OUT" ]]; then
@@ -57,7 +57,7 @@ if [[ ! -s "$HTML_OUT" ]]; then
 fi
 echo "  OK: $HTML_OUT ($(wc -c < "$HTML_OUT") bytes)"
 
-echo "[6/8] export CSV"
+echo "[6/9] export CSV"
 CSV_OUT="$TMPDIR_TEST/report.csv"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --csv "$CSV_OUT" > /dev/null
 if [[ ! -s "$CSV_OUT" ]]; then
@@ -73,7 +73,7 @@ for section in top_files top_dirs extensions categories issues; do
 done
 echo "  OK: $CSV_OUT ($(wc -c < "$CSV_OUT") bytes)"
 
-echo "[7/8] desktop integration files"
+echo "[7/9] desktop integration files"
 DESKTOP_FILE="$PROJECT_ROOT/packaging/linux/gdlex-inspector.desktop"
 ICON_FILE="$PROJECT_ROOT/gdlex_inspector/assets/gdlex-inspector.svg"
 INSTALL_SCRIPT="$PROJECT_ROOT/scripts/install_desktop_entry.sh"
@@ -95,7 +95,32 @@ if [[ ! -x "$INSTALL_SCRIPT" ]]; then
 fi
 echo "  OK"
 
-echo "[8/8] unit tests"
+echo "[8/9] Debian package build"
+BUILD_SCRIPT="$PROJECT_ROOT/scripts/build_deb.sh"
+if [[ ! -x "$BUILD_SCRIPT" ]]; then
+  echo "  FAIL: build script missing or not executable: $BUILD_SCRIPT" >&2
+  exit 1
+fi
+"$BUILD_SCRIPT" > /dev/null
+DEB_FILE="$(find "$PROJECT_ROOT/dist" -maxdepth 1 -name 'gdlex-inspector_*_all.deb' -print -quit)"
+if [[ -z "$DEB_FILE" || ! -s "$DEB_FILE" ]]; then
+  echo "  FAIL: Debian package missing or empty" >&2
+  exit 1
+fi
+dpkg-deb --info "$DEB_FILE" > /dev/null
+DEB_CONTENTS="$(dpkg-deb --contents "$DEB_FILE")"
+for packaged_path in \
+  "./usr/bin/gdlex-inspector" \
+  "./usr/share/applications/gdlex-inspector.desktop" \
+  "./usr/share/icons/hicolor/scalable/apps/gdlex-inspector.svg"; do
+  if ! grep -q "$packaged_path" <<< "$DEB_CONTENTS"; then
+    echo "  FAIL: package does not contain $packaged_path" >&2
+    exit 1
+  fi
+done
+echo "  OK: $DEB_FILE"
+
+echo "[9/9] unit tests"
 $PYTHON -m unittest discover -s tests -v 2>&1 | tail -5
 echo "  OK"
 
