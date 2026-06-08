@@ -12,6 +12,7 @@ import subprocess
 import sys
 
 from . import gui_theme
+from . import gui_charts
 
 try:
     from PySide6.QtCore import Qt, QSettings, QThread, Signal
@@ -191,9 +192,12 @@ if _PYSIDE6_AVAILABLE:
             self._files_table.itemDoubleClicked.connect(self._open_table_item)
             self._dirs_table.itemDoubleClicked.connect(self._open_table_item)
 
+            self._charts_tab = gui_charts.ChartsTab()
+
             self._tab_widget.addTab(self._files_table, "Top file")
             self._tab_widget.addTab(self._dirs_table, "Top cartelle")
             self._tab_widget.addTab(self._cats_table, "Categorie")
+            self._tab_widget.addTab(self._charts_tab, "Grafici")
             splitter.addWidget(self._tab_widget)
 
             splitter.setStretchFactor(0, 0)
@@ -301,6 +305,7 @@ if _PYSIDE6_AVAILABLE:
                 self._files_table.setRowCount(0)
                 self._dirs_table.setRowCount(0)
                 self._cats_table.setRowCount(0)
+                self._charts_tab.set_data(None)
 
         def _start_scan(self) -> None:
             path = self._path_edit.text().strip()
@@ -349,6 +354,7 @@ if _PYSIDE6_AVAILABLE:
             from .report import _fmt_size
             self._result = result
             self._populate_tables(result)
+            self._charts_tab.set_data(result)
 
             self._log_msg("Scansione completata.")
             self._log_msg(f"  Percorso: {result.root_path}")
