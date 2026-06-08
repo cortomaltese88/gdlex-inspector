@@ -21,6 +21,12 @@ class TestGuiImport(unittest.TestCase):
         from gdlex_inspector.gui import launch_gui
         self.assertTrue(callable(launch_gui))
 
+    def test_gui_uses_sensitivity_column_label(self):
+        from gdlex_inspector.gui import SENSITIVITY_COLUMN_LABEL, SENSITIVITY_HELP
+        self.assertEqual(SENSITIVITY_COLUMN_LABEL, "Sensibilità")
+        self.assertIn("rimozione o modifica", SENSITIVITY_HELP)
+        self.assertIn("non la dimensione", SENSITIVITY_HELP)
+
     def test_gui_theme_importable(self):
         import gdlex_inspector.gui_theme as theme
         self.assertIsNotNone(theme.STYLESHEET)
@@ -29,7 +35,7 @@ class TestGuiImport(unittest.TestCase):
 
     def test_gui_theme_risk_colors_defined(self):
         from gdlex_inspector.gui_theme import RISK_COLORS
-        for level in ("none", "low", "medium", "high", "critical"):
+        for level in ("none", "low", "medium", "high", "critical", "system"):
             self.assertIn(level, RISK_COLORS)
 
     def test_cli_gui_help(self):
@@ -115,7 +121,7 @@ class TestGuiThemes(unittest.TestCase):
         for theme in ("Matrix", "Scuro", "Chiaro"):
             set_current_theme(theme)
             rc = get_current_risk_colors()
-            for level in ("none", "low", "medium", "high", "critical"):
+            for level in ("none", "low", "medium", "high", "critical", "system"):
                 self.assertIn(level, rc, msg=f"Missing risk level {level!r} for theme {theme!r}")
 
     def test_get_current_colors_returns_dict(self):

@@ -145,13 +145,18 @@ class TestGuiChartsImport(unittest.TestCase):
 class TestFmtSizeForCharts(unittest.TestCase):
 
     def test_bytes(self):
-        self.assertEqual(_fmt_size(512), "512.0 B")
+        self.assertEqual(_fmt_size(0), "0 B")
+        self.assertEqual(_fmt_size(512), "512 B")
 
     def test_kilobytes(self):
-        self.assertEqual(_fmt_size(2048), "2.0 K")
+        self.assertEqual(_fmt_size(1024), "1.0 KiB")
+        self.assertEqual(_fmt_size(1536), "1.5 KiB")
 
     def test_megabytes(self):
-        self.assertEqual(_fmt_size(1024 * 1024), "1.0 M")
+        self.assertEqual(_fmt_size(1024 * 1024), "1.0 MiB")
+
+    def test_gigabytes(self):
+        self.assertEqual(_fmt_size(1024 * 1024 * 1024), "1.0 GiB")
 
 
 if __name__ == "__main__":

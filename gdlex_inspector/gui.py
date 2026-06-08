@@ -13,6 +13,7 @@ import sys
 
 from . import gui_theme
 from . import gui_charts
+from .risk import risk_label_for_display, risk_style_for_display
 
 try:
     from PySide6.QtCore import Qt, QEventLoop, QRectF, QSettings, QThread, QTimer, Signal
@@ -61,6 +62,11 @@ except ImportError:
 _SETTINGS_ORG = "GDLex"
 _SETTINGS_APP = "Inspector"
 _DIGITAL_RAIN_GLYPHS = "01アイウエオカキクケコサシスセソ<>/{}[]"
+SENSITIVITY_COLUMN_LABEL = "Sensibilità"
+SENSITIVITY_HELP = (
+    "Indica la sensibilità/rischio di rimozione o modifica, "
+    "non la dimensione del file."
+)
 
 
 def digital_rain_columns(width: int, column_width: int = 18) -> tuple[int, ...]:
@@ -549,14 +555,19 @@ if _PYSIDE6_AVAILABLE:
 
             self._tab_widget = QTabWidget()
             self._files_table = self._make_table(
-                ["#", "Percorso", "Dimensione", "Categoria", "Rischio"], stretch_col=1
+                ["#", "Percorso", "Dimensione", "Categoria", SENSITIVITY_COLUMN_LABEL],
+                stretch_col=1,
             )
             self._dirs_table = self._make_table(
-                ["#", "Percorso", "Dimensione", "File", "Rischio"], stretch_col=1
+                ["#", "Percorso", "Dimensione", "File", SENSITIVITY_COLUMN_LABEL],
+                stretch_col=1,
             )
             self._cats_table = self._make_table(
-                ["Categoria", "Dimensione", "File", "Rischio"], stretch_col=0
+                ["Categoria", "Dimensione", "File", SENSITIVITY_COLUMN_LABEL],
+                stretch_col=0,
             )
+            for table in (self._files_table, self._dirs_table, self._cats_table):
+                table.horizontalHeaderItem(table.columnCount() - 1).setToolTip(SENSITIVITY_HELP)
             self._files_table.itemDoubleClicked.connect(self._open_table_item)
             self._dirs_table.itemDoubleClicked.connect(self._open_table_item)
 
@@ -824,26 +835,46 @@ if _PYSIDE6_AVAILABLE:
 
             self._files_table.setRowCount(len(result.top_files))
             for row, f in enumerate(result.top_files):
+                risk_style = risk_style_for_display(
+                    f.risk_level, f.category, f.path, f.size
+                )
                 self._fill_row(
                     self._files_table, row,
-                    [str(row + 1), f.path, _fmt_size(f.size), f.category, f.risk_level],
-                    risk_col=4, risk_value=f.risk_level,
+                    [
+                        str(row + 1), f.path, _fmt_size(f.size), f.category,
+                        risk_label_for_display(f.risk_level, f.category, f.path, f.size),
+                    ],
+                    risk_col=4, risk_value=risk_style,
                 )
 
             self._dirs_table.setRowCount(len(result.top_dirs))
             for row, d in enumerate(result.top_dirs):
+                risk_style = risk_style_for_display(
+                    d.risk_level, d.category, d.path, d.size
+                )
                 self._fill_row(
                     self._dirs_table, row,
-                    [str(row + 1), d.path, _fmt_size(d.size), str(d.file_count), d.risk_level],
-                    risk_col=4, risk_value=d.risk_level,
+                    [
+                        str(row + 1), d.path, _fmt_size(d.size), str(d.file_count),
+                        risk_label_for_display(d.risk_level, d.category, d.path, d.size),
+                    ],
+                    risk_col=4, risk_value=risk_style,
                 )
 
             self._cats_table.setRowCount(len(result.categories))
             for row, c in enumerate(result.categories):
+                risk_style = risk_style_for_display(
+                    c.risk_level, c.category, size=c.total_size
+                )
                 self._fill_row(
                     self._cats_table, row,
-                    [c.category, _fmt_size(c.total_size), str(c.file_count), c.risk_level],
-                    risk_col=3, risk_value=c.risk_level,
+                    [
+                        c.category, _fmt_size(c.total_size), str(c.file_count),
+                        risk_label_for_display(
+                            c.risk_level, c.category, size=c.total_size
+                        ),
+                    ],
+                    risk_col=3, risk_value=risk_style,
                 )
 
         @staticmethod

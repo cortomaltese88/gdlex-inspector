@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
-from gdlex_inspector.models import CategorySummary, DirectoryEntry, ScanResult
+from gdlex_inspector.models import CategorySummary, DirectoryEntry, FileEntry, ScanResult
 from gdlex_inspector.report import (
     calculate_percentages,
     category_color,
@@ -89,6 +89,23 @@ class TestHtmlReportCharts(unittest.TestCase):
         timestamp = html.split("<b>Data scansione:</b> ", 1)[1].split("<br>", 1)[0]
         parsed = datetime.fromisoformat(timestamp)
         self.assertEqual(parsed.utcoffset(), timezone.utc.utcoffset(parsed))
+
+    def test_html_uses_sensitivity_heading_and_system_label(self):
+        result = _make_result()
+        result.top_files = [
+            FileEntry(
+                path="/etc/ssh/moduli",
+                size=620032,
+                category="other",
+                risk_level="critical",
+            )
+        ]
+        html = to_html(result)
+        self.assertIn("<th>Sensibilità</th>", html)
+        self.assertNotIn("<th>Rischio</th>", html)
+        self.assertIn("badge-system", html)
+        self.assertIn(">Sistema</span>", html)
+        self.assertNotIn(">critical</span>", html)
 
 
 if __name__ == "__main__":

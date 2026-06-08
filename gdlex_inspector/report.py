@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from html import escape
 
 from .models import CategorySummary, DirectoryEntry, ScanResult
+from .risk import risk_label_for_display, risk_style_for_display
 
 _CATEGORY_COLORS = {
     "pst": "#00ff41",
@@ -89,6 +90,7 @@ h2 { color: #39ff14; font-size: 1.1em; border-bottom: 1px solid #1a4d1a; padding
 .badge-medium { background: #2b1a00; color: #ffcc00; border: 1px solid #5c3a00; }
 .badge-high { background: #2b0000; color: #ff6060; border: 1px solid #5c0000; }
 .badge-critical { background: #400000; color: #ff2222; border: 1px solid #800000; font-weight: bold; }
+.badge-system { background: #0b2633; color: #63c7ee; border: 1px solid #24576b; }
 table { width: 100%; border-collapse: collapse; margin-top: 8px; }
 th { background: #0d2b0d; color: #39ff14; text-align: left; padding: 6px 8px; font-size: 0.9em; }
 td { padding: 5px 8px; border-bottom: 1px solid #0d1a0d; word-break: break-all; }
@@ -214,19 +216,25 @@ def top_directories_bar_svg(directories: list[DirectoryEntry]) -> str:
 
 
 def _fmt_size(n: int) -> str:
-    for unit in ("B", "K", "M", "G", "T"):
-        if abs(n) < 1024.0:
-            return f"{n:.1f} {unit}"
-        n /= 1024.0
-    return f"{n:.1f} P"
+    if abs(n) < 1024:
+        return f"{n} B"
+    value = float(n)
+    for unit in ("KiB", "MiB", "GiB", "TiB"):
+        value /= 1024.0
+        if abs(value) < 1024.0:
+            return f"{value:.1f} {unit}"
+    return f"{value / 1024.0:.1f} PiB"
 
 
-def _risk_badge(level: str) -> str:
+def _risk_badge(level: str, category: str = "", path: str = "", size: int = 0) -> str:
+    style = risk_style_for_display(level, category, path, size)
+    label = risk_label_for_display(level, category, path, size)
     cls = {
         "none": "badge-ok", "low": "badge-low",
-        "medium": "badge-medium", "high": "badge-high", "critical": "badge-critical",
-    }.get(level, "badge-ok")
-    return f'<span class="badge {cls}">{level}</span>'
+        "medium": "badge-medium", "high": "badge-high",
+        "critical": "badge-critical", "system": "badge-system",
+    }.get(style, "badge-ok")
+    return f'<span class="badge {cls}">{escape(label)}</span>'
 
 
 def to_json(result: ScanResult) -> str:
@@ -275,15 +283,29 @@ def to_csv(result: ScanResult) -> str:
     w = csv.writer(buf, lineterminator="\n")
 
     w.writerow(["SECTION", "top_files"])
-    w.writerow(["rank", "path", "size_bytes", "size_human", "category", "risk_level", "risk_message"])
+    w.writerow([
+        "rank", "path", "size_bytes", "size_human", "category",
+        "sensitivity", "risk_level", "risk_message",
+    ])
     for i, f in enumerate(result.top_files, 1):
-        w.writerow([i, f.path, f.size, _fmt_size(f.size), f.category, f.risk_level, f.risk_message])
+        w.writerow([
+            i, f.path, f.size, _fmt_size(f.size), f.category,
+            risk_label_for_display(f.risk_level, f.category, f.path, f.size),
+            f.risk_level, f.risk_message,
+        ])
     w.writerow([])
 
     w.writerow(["SECTION", "top_dirs"])
-    w.writerow(["rank", "path", "size_bytes", "size_human", "file_count", "category", "risk_level"])
+    w.writerow([
+        "rank", "path", "size_bytes", "size_human", "file_count", "category",
+        "sensitivity", "risk_level",
+    ])
     for i, d in enumerate(result.top_dirs, 1):
-        w.writerow([i, d.path, d.size, _fmt_size(d.size), d.file_count, d.category, d.risk_level])
+        w.writerow([
+            i, d.path, d.size, _fmt_size(d.size), d.file_count, d.category,
+            risk_label_for_display(d.risk_level, d.category, d.path, d.size),
+            d.risk_level,
+        ])
     w.writerow([])
 
     w.writerow(["SECTION", "extensions"])
@@ -293,9 +315,16 @@ def to_csv(result: ScanResult) -> str:
     w.writerow([])
 
     w.writerow(["SECTION", "categories"])
-    w.writerow(["category", "total_size_bytes", "total_size_human", "file_count", "risk_level"])
+    w.writerow([
+        "category", "total_size_bytes", "total_size_human", "file_count",
+        "sensitivity", "risk_level",
+    ])
     for c in result.categories:
-        w.writerow([c.category, c.total_size, _fmt_size(c.total_size), c.file_count, c.risk_level])
+        w.writerow([
+            c.category, c.total_size, _fmt_size(c.total_size), c.file_count,
+            risk_label_for_display(c.risk_level, c.category, size=c.total_size),
+            c.risk_level,
+        ])
     w.writerow([])
 
     w.writerow(["SECTION", "issues"])
@@ -318,7 +347,7 @@ def to_html(result: ScanResult) -> str:
             f'<tr><td class="path">{f.path}</td>'
             f'<td class="size">{_fmt_size(f.size)}</td>'
             f'<td>{f.category}</td>'
-            f'<td>{_risk_badge(f.risk_level)}</td>'
+            f'<td>{_risk_badge(f.risk_level, f.category, f.path, f.size)}</td>'
             f'<td class="warn">{f.risk_message}</td></tr>\n'
         )
 
@@ -329,7 +358,7 @@ def to_html(result: ScanResult) -> str:
             f'<td class="size">{_fmt_size(d.size)}</td>'
             f'<td>{d.file_count}</td>'
             f'<td>{d.category}</td>'
-            f'<td>{_risk_badge(d.risk_level)}</td></tr>\n'
+            f'<td>{_risk_badge(d.risk_level, d.category, d.path, d.size)}</td></tr>\n'
         )
 
     rows_ext = ""
@@ -346,7 +375,7 @@ def to_html(result: ScanResult) -> str:
             f'<tr><td>{c.category}</td>'
             f'<td class="size">{_fmt_size(c.total_size)}</td>'
             f'<td>{c.file_count}</td>'
-            f'<td>{_risk_badge(c.risk_level)}</td></tr>\n'
+            f'<td>{_risk_badge(c.risk_level, c.category, size=c.total_size)}</td></tr>\n'
         )
 
     rows_issues = ""
@@ -403,6 +432,7 @@ def to_html(result: ScanResult) -> str:
 </section>
 <p style="color:#6af06a; font-size:0.85em;">
   &#x26A0;&#xFE0F; Questo report è solo diagnostico. Nessun file è stato modificato o cancellato.
+  La sensibilità indica il rischio di rimozione o modifica, non la dimensione.
 </p>
 
 <section class="charts-grid" aria-label="Grafici statici">
@@ -420,11 +450,11 @@ def to_html(result: ScanResult) -> str:
 </section>
 
 <h2>Top file per dimensione</h2>
-<table><thead><tr><th>Percorso</th><th>Dim.</th><th>Categoria</th><th>Rischio</th><th>Avviso</th></tr></thead>
+<table><thead><tr><th>Percorso</th><th>Dim.</th><th>Categoria</th><th>Sensibilità</th><th>Avviso</th></tr></thead>
 <tbody>{rows_files}</tbody></table>
 
 <h2>Top cartelle per dimensione</h2>
-<table><thead><tr><th>Percorso</th><th>Dim.</th><th>File</th><th>Categoria</th><th>Rischio</th></tr></thead>
+<table><thead><tr><th>Percorso</th><th>Dim.</th><th>File</th><th>Categoria</th><th>Sensibilità</th></tr></thead>
 <tbody>{rows_dirs}</tbody></table>
 
 <h2>Riepilogo per estensione</h2>
@@ -432,7 +462,7 @@ def to_html(result: ScanResult) -> str:
 <tbody>{rows_ext}</tbody></table>
 
 <h2>Riepilogo per categoria</h2>
-<table><thead><tr><th>Categoria</th><th>Dimensione</th><th>File</th><th>Rischio</th></tr></thead>
+<table><thead><tr><th>Categoria</th><th>Dimensione</th><th>File</th><th>Sensibilità</th></tr></thead>
 <tbody>{rows_cat}</tbody></table>
 
 {issues_section}

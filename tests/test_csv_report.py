@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import os
 import subprocess
 import sys
@@ -18,7 +19,7 @@ from gdlex_inspector.models import (
     ScanIssue,
     ScanResult,
 )
-from gdlex_inspector.report import to_csv
+from gdlex_inspector.report import to_csv, to_json
 
 
 def _make_result() -> ScanResult:
@@ -130,6 +131,38 @@ class TestToCsvGeneration(unittest.TestCase):
                 found = True
                 break
         self.assertTrue(found, "categories section header not found")
+
+    def test_csv_uses_readable_sensitivity_and_keeps_technical_risk(self):
+        self.result.top_files = [
+            FileEntry(
+                path="/etc/ssh/moduli",
+                size=620032,
+                category="other",
+                risk_level="critical",
+            )
+        ]
+        rows = list(csv.reader(io.StringIO(to_csv(self.result))))
+        header_index = rows.index(["SECTION", "top_files"]) + 1
+        header = rows[header_index]
+        data = rows[header_index + 1]
+        self.assertEqual(data[header.index("sensitivity")], "Sistema")
+        self.assertEqual(data[header.index("risk_level")], "critical")
+        self.assertEqual(data[header.index("size_human")], "605.5 KiB")
+
+    def test_json_keeps_numeric_sizes_and_technical_risk(self):
+        self.result.top_files = [
+            FileEntry(
+                path="/etc/ssh/moduli",
+                size=620032,
+                category="other",
+                risk_level="critical",
+            )
+        ]
+        data = json.loads(to_json(self.result))
+        self.assertIsInstance(data["total_size"], int)
+        self.assertIsInstance(data["top_files"][0]["size"], int)
+        self.assertEqual(data["top_files"][0]["risk_level"], "critical")
+        self.assertNotIn("sensitivity", data["top_files"][0])
 
 
 class TestCsvCLI(unittest.TestCase):

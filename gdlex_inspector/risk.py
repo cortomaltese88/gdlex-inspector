@@ -5,13 +5,13 @@ No files are deleted or modified — this module only produces advisory messages
 
 from __future__ import annotations
 
-import os
-
 RISK_NONE = "none"
 RISK_LOW = "low"
 RISK_MEDIUM = "medium"
 RISK_HIGH = "high"
 RISK_CRITICAL = "critical"
+
+SENSITIVITY_SYSTEM = "system"
 
 
 _PATH_CRITICAL_FRAGMENTS = (
@@ -41,6 +41,24 @@ _CATEGORY_RULES: dict[str, tuple[str, str]] = {
     "other": (RISK_NONE, ""),
 }
 
+_PROTECTED_UNIX_ROOTS = (
+    "/etc",
+    "/usr",
+    "/bin",
+    "/sbin",
+    "/lib",
+    "/boot",
+    "/var/lib",
+)
+
+_RISK_DISPLAY_LABELS = {
+    RISK_NONE: "Normale",
+    RISK_LOW: "Bassa",
+    RISK_MEDIUM: "Media",
+    RISK_HIGH: "Alta",
+    RISK_CRITICAL: "Critica",
+}
+
 
 def classify_risk(path: str, category: str) -> tuple[str, str]:
     """Return (risk_level, advisory_message) for a path and its category."""
@@ -51,3 +69,38 @@ def classify_risk(path: str, category: str) -> tuple[str, str]:
             return (RISK_CRITICAL, "Non cancellare manualmente: percorso di sistema critico.")
 
     return _CATEGORY_RULES.get(category, (RISK_NONE, ""))
+
+
+def is_protected_system_path(path: str) -> bool:
+    """Return whether path belongs to a protected Unix system tree."""
+    normalized = path.lower().replace("\\", "/").rstrip("/") or "/"
+    return any(
+        normalized == root or normalized.startswith(root + "/")
+        for root in _PROTECTED_UNIX_ROOTS
+    )
+
+
+def risk_label_for_display(
+    risk: str,
+    category: str = "",
+    path: str = "",
+    size: int = 0,
+) -> str:
+    """Return an Italian sensitivity label without changing technical risk data."""
+    del category, size
+    if is_protected_system_path(path):
+        return "Sistema"
+    return _RISK_DISPLAY_LABELS.get(risk, risk.capitalize() or "Normale")
+
+
+def risk_style_for_display(
+    risk: str,
+    category: str = "",
+    path: str = "",
+    size: int = 0,
+) -> str:
+    """Return the presentation style key associated with a sensitivity label."""
+    del category, size
+    if is_protected_system_path(path):
+        return SENSITIVITY_SYSTEM
+    return risk

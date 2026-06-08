@@ -123,6 +123,7 @@ _RISK_COLORS: dict[str, dict[str, str]] = {
         "medium":   "#ffcc00",
         "high":     "#ff6060",
         "critical": "#ff2222",
+        "system":   "#63c7ee",
     },
     "Scuro": {
         "none":     "#c7d2db",
@@ -130,6 +131,7 @@ _RISK_COLORS: dict[str, dict[str, str]] = {
         "medium":   "#f4c95d",
         "high":     "#ff826e",
         "critical": "#ff4f64",
+        "system":   "#67c5e8",
     },
     "Chiaro": {
         "none":     "#263842",
@@ -137,6 +139,7 @@ _RISK_COLORS: dict[str, dict[str, str]] = {
         "medium":   "#946200",
         "high":     "#b23a24",
         "critical": "#8e1428",
+        "system":   "#176f91",
     },
 }
 

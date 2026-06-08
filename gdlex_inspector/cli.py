@@ -10,6 +10,7 @@ from . import __version__
 from .backend import choose_backend
 from .platform_info import get_platform_summary
 from .report import _fmt_size, to_csv, to_html, to_json
+from .risk import risk_label_for_display, risk_style_for_display
 from .scanner import parse_size, scan_directory
 
 
@@ -30,14 +31,18 @@ def _print_result(result, top_n: int) -> None:
     if result.top_files:
         print(f"  Top {len(result.top_files)} files by size:")
         for i, f in enumerate(result.top_files, 1):
-            risk = f" [{f.risk_level}]" if f.risk_level not in ("none", "low") else ""
+            label = risk_label_for_display(f.risk_level, f.category, f.path, f.size)
+            style = risk_style_for_display(f.risk_level, f.category, f.path, f.size)
+            risk = f" [{label}]" if style not in ("none", "low") else ""
             print(f"    {i:>3}. {_fmt_size(f.size):>10}  {f.path}{risk}")
     print()
 
     if result.top_dirs:
         print(f"  Top {len(result.top_dirs)} directories by size:")
         for i, d in enumerate(result.top_dirs, 1):
-            risk = f" [{d.risk_level}]" if d.risk_level not in ("none", "low") else ""
+            label = risk_label_for_display(d.risk_level, d.category, d.path, d.size)
+            style = risk_style_for_display(d.risk_level, d.category, d.path, d.size)
+            risk = f" [{label}]" if style not in ("none", "low") else ""
             print(f"    {i:>3}. {_fmt_size(d.size):>10}  {d.path}{risk}")
     print()
 
