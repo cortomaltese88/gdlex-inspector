@@ -7,8 +7,27 @@ import io
 import json
 import os
 from datetime import datetime
+from html import escape
 
-from .models import ScanResult
+from .models import CategorySummary, DirectoryEntry, ScanResult
+
+_CATEGORY_COLORS = {
+    "pst": "#00ff41",
+    "ost": "#39ff14",
+    "downloads": "#aaff00",
+    "browser_cache": "#00e5ff",
+    "temp": "#ffcc00",
+    "node_modules": "#ff8c42",
+    "venv": "#b388ff",
+    "docker": "#00b8d4",
+    "snap_flatpak": "#ff5c8a",
+    "onedrive": "#448aff",
+    "other": "#8aa68a",
+}
+_FALLBACK_COLORS = (
+    "#00ff41", "#00e5ff", "#ffcc00", "#ff8c42",
+    "#b388ff", "#ff5c8a", "#448aff", "#aaff00",
+)
 
 _MATRIX_CSS = """
 body {
@@ -22,6 +41,48 @@ body {
 h1 { color: #00ff41; font-size: 1.4em; margin-bottom: 4px; }
 h2 { color: #39ff14; font-size: 1.1em; border-bottom: 1px solid #1a4d1a; padding-bottom: 4px; margin-top: 24px; }
 .meta { color: #6af06a; font-size: 0.9em; margin-bottom: 16px; }
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 18px 0;
+}
+.summary-card, .chart-card {
+    background: #0b160b;
+    border: 1px solid #1a4d1a;
+    border-radius: 6px;
+    padding: 14px;
+}
+.summary-label { color: #6af06a; font-size: 0.82em; }
+.summary-value { color: #e0ffe0; font-size: 1.35em; font-weight: bold; margin-top: 5px; }
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+.chart-card h2 { margin-top: 0; }
+.chart-svg { display: block; width: 100%; height: auto; }
+.category-chart-layout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+}
+.category-chart-layout .chart-svg { max-width: 260px; }
+.chart-legend { flex: 1 1 220px; min-width: 0; }
+.legend-item {
+    display: grid;
+    grid-template-columns: 12px minmax(90px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid #122412;
+}
+.legend-swatch { width: 10px; height: 10px; border-radius: 50%; }
+.legend-value { color: #9bd69b; white-space: nowrap; text-align: right; }
+.empty-state { color: #6f936f; text-align: center; padding: 20px 8px; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.82em; }
 .badge-ok { background: #0d2b0d; color: #39ff14; border: 1px solid #1f5e1f; }
 .badge-low { background: #1a2b00; color: #aaff00; border: 1px solid #3a5c00; }
@@ -38,6 +99,118 @@ tr:hover td { background: #0d1a0d; }
 .issue { color: #ff6060; font-size: 0.85em; }
 .footer { color: #2a5c2a; font-size: 0.8em; margin-top: 32px; border-top: 1px solid #1a3a1a; padding-top: 8px; }
 """
+
+
+def calculate_percentages(values: list[int]) -> list[float]:
+    """Return non-negative percentages that add up to 100 when data exists."""
+    normalized = [max(0, value) for value in values]
+    total = sum(normalized)
+    if total == 0:
+        return [0.0] * len(values)
+
+    percentages = []
+    accumulated = 0.0
+    last_positive = max(i for i, value in enumerate(normalized) if value > 0)
+    for i, value in enumerate(normalized):
+        if i == last_positive:
+            percentage = 100.0 - accumulated
+        else:
+            percentage = value / total * 100.0
+            accumulated += percentage
+        percentages.append(percentage)
+    return percentages
+
+
+def category_color(category: str) -> str:
+    """Return a stable Matrix-compatible color for a category name."""
+    if category in _CATEGORY_COLORS:
+        return _CATEGORY_COLORS[category]
+    index = sum(category.encode("utf-8")) % len(_FALLBACK_COLORS)
+    return _FALLBACK_COLORS[index]
+
+
+def category_donut_svg(categories: list[CategorySummary]) -> str:
+    """Render category sizes as an inline SVG donut chart."""
+    values = [category.total_size for category in categories]
+    percentages = calculate_percentages(values)
+    total = sum(max(0, value) for value in values)
+    radius = 72
+    segments = []
+    offset = 0.0
+
+    for category, percentage in zip(categories, percentages):
+        if percentage <= 0:
+            continue
+        segments.append(
+            f'<circle cx="110" cy="110" r="{radius}" fill="none" '
+            f'stroke="{category_color(category.category)}" stroke-width="28" '
+            f'stroke-dasharray="{percentage:.6f} {100 - percentage:.6f}" '
+            f'stroke-dashoffset="{-offset:.6f}" pathLength="100">'
+            f'<title>{escape(category.category)}: {_fmt_size(category.total_size)} '
+            f'({percentage:.1f}%)</title></circle>'
+        )
+        offset += percentage
+
+    center_text = _fmt_size(total) if total else "Nessun dato"
+    center_class = "donut-total" if total else "donut-empty"
+    return (
+        '<svg id="category-chart" class="chart-svg" viewBox="0 0 220 220" '
+        'role="img" aria-labelledby="category-chart-title category-chart-desc">'
+        '<title id="category-chart-title">Distribuzione dimensioni per categoria</title>'
+        '<desc id="category-chart-desc">Grafico donut statico delle categorie rilevate.</desc>'
+        '<circle cx="110" cy="110" r="72" fill="none" stroke="#153015" stroke-width="28"/>'
+        f'<g transform="rotate(-90 110 110)">{"".join(segments)}</g>'
+        f'<text x="110" y="106" text-anchor="middle" fill="#39ff14" '
+        f'font-size="13" font-weight="bold">{escape(center_text)}</text>'
+        f'<text class="{center_class}" x="110" y="126" text-anchor="middle" '
+        f'fill="#6af06a" font-size="9">totale categorie</text>'
+        '</svg>'
+    )
+
+
+def top_directories_bar_svg(directories: list[DirectoryEntry]) -> str:
+    """Render top directory sizes as an inline horizontal SVG bar chart."""
+    chart_width = 900
+    label_width = 330
+    bar_width = 430
+    row_height = 48
+    height = max(120, len(directories) * row_height + 24)
+    maximum = max((max(0, directory.size) for directory in directories), default=0)
+    rows = []
+
+    for index, directory in enumerate(directories):
+        y = 18 + index * row_height
+        width = (max(0, directory.size) / maximum * bar_width) if maximum else 0
+        label = directory.path
+        if len(label) > 43:
+            label = "..." + label[-40:]
+        rows.append(
+            f'<g><title>{escape(directory.path)}: {_fmt_size(directory.size)}</title>'
+            f'<text x="8" y="{y + 17}" fill="#c8ffc8" font-size="12">'
+            f'{escape(label)}</text>'
+            f'<rect x="{label_width}" y="{y}" width="{bar_width}" height="22" '
+            f'rx="3" fill="#102810"/>'
+            f'<rect x="{label_width}" y="{y}" width="{width:.2f}" height="22" '
+            f'rx="3" fill="{category_color(directory.category)}"/>'
+            f'<text x="{label_width + bar_width + 10}" y="{y + 16}" '
+            f'fill="#9bd69b" font-size="11">{_fmt_size(directory.size)}</text></g>'
+        )
+
+    empty = ""
+    if not directories:
+        empty = (
+            '<text x="450" y="60" text-anchor="middle" fill="#6f936f" '
+            'font-size="14">Nessuna cartella disponibile</text>'
+        )
+
+    return (
+        f'<svg id="top-directories-chart" class="chart-svg" '
+        f'viewBox="0 0 {chart_width} {height}" role="img" '
+        'aria-labelledby="directories-chart-title directories-chart-desc">'
+        '<title id="directories-chart-title">Top cartelle per dimensione</title>'
+        '<desc id="directories-chart-desc">Grafico statico a barre orizzontali.</desc>'
+        f'{"".join(rows)}{empty}</svg>'
+    )
 
 
 def _fmt_size(n: int) -> str:
@@ -180,6 +353,24 @@ def to_html(result: ScanResult) -> str:
     for i in result.issues:
         rows_issues += f'<tr><td class="path">{i.path}</td><td class="issue">{i.error}</td></tr>\n'
 
+    category_percentages = calculate_percentages(
+        [category.total_size for category in result.categories]
+    )
+    legend_items = ""
+    for category, percentage in zip(result.categories, category_percentages):
+        legend_items += (
+            '<div class="legend-item">'
+            f'<span class="legend-swatch" style="background:{category_color(category.category)}"></span>'
+            f'<span>{escape(category.category)}</span>'
+            f'<span class="legend-value">{_fmt_size(category.total_size)} '
+            f'({percentage:.1f}%)</span></div>'
+        )
+    if not legend_items:
+        legend_items = '<div class="empty-state">Nessuna categoria disponibile</div>'
+
+    category_chart = category_donut_svg(result.categories)
+    directories_chart = top_directories_bar_svg(result.top_dirs)
+
     issues_section = ""
     if result.issues:
         issues_section = f"""
@@ -204,15 +395,29 @@ def to_html(result: ScanResult) -> str:
   <b>Percorso analizzato:</b> {result.root_path}<br>
   <b>Backend:</b> {result.backend_used}
 </div>
-<table style="width:auto; margin-bottom:16px;">
-  <tr><td>Dimensione totale</td><td class="size"><b>{_fmt_size(result.total_size)}</b></td></tr>
-  <tr><td>File totali</td><td class="size"><b>{result.total_files}</b></td></tr>
-  <tr><td>Cartelle totali</td><td class="size"><b>{result.total_dirs}</b></td></tr>
-  <tr><td>Percorsi non accessibili</td><td class="size">{len(result.issues)}</td></tr>
-</table>
+<section class="summary-grid" aria-label="Riepilogo scansione">
+  <div class="summary-card"><div class="summary-label">Dimensione totale</div><div class="summary-value">{_fmt_size(result.total_size)}</div></div>
+  <div class="summary-card"><div class="summary-label">File totali</div><div class="summary-value">{result.total_files}</div></div>
+  <div class="summary-card"><div class="summary-label">Cartelle totali</div><div class="summary-value">{result.total_dirs}</div></div>
+  <div class="summary-card"><div class="summary-label">Percorsi non accessibili</div><div class="summary-value">{len(result.issues)}</div></div>
+</section>
 <p style="color:#6af06a; font-size:0.85em;">
   &#x26A0;&#xFE0F; Questo report è solo diagnostico. Nessun file è stato modificato o cancellato.
 </p>
+
+<section class="charts-grid" aria-label="Grafici statici">
+  <article class="chart-card">
+    <h2>Distribuzione per categoria</h2>
+    <div class="category-chart-layout">
+      {category_chart}
+      <div class="chart-legend" aria-label="Legenda categorie">{legend_items}</div>
+    </div>
+  </article>
+  <article class="chart-card">
+    <h2>Top cartelle — grafico</h2>
+    {directories_chart}
+  </article>
+</section>
 
 <h2>Top file per dimensione</h2>
 <table><thead><tr><th>Percorso</th><th>Dim.</th><th>Categoria</th><th>Rischio</th><th>Avviso</th></tr></thead>

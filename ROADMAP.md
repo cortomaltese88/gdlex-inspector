@@ -47,8 +47,8 @@
 
 ## Fase 3 — Grafici e report avanzati
 
-- [ ] Grafico torta/donut per categorie (colori stabili per categoria)
-- [ ] Grafico barre top cartelle
+- [x] Grafico torta/donut per categorie (report HTML statico; GUI esclusa)
+- [x] Grafico barre top cartelle (report HTML statico; GUI esclusa)
 - [ ] Export PDF (weasyprint o equivalente)
 - [ ] Export DOCX/Word (python-docx)
 - [ ] Stampa report diretta

@@ -145,6 +145,9 @@ python -m gdlex_inspector scan . --csv report.csv
 python -m gdlex_inspector scan . --json report.json --html report.html --csv report.csv
 ```
 
+Il report HTML include grafici statici inline (donut per categorie e barre per le
+top cartelle), senza JavaScript obbligatorio né dipendenze esterne.
+
 ---
 
 ## Opzioni disponibili
@@ -170,7 +173,7 @@ python -m gdlex_inspector scan . --json report.json --html report.html --csv rep
 - Nessuna connessione SSH reale (predisposta, non implementata — Fase 5).
 - Nessun Wake-on-LAN GUI (solo funzioni utility — Fase 5).
 - Nessun export PDF/DOCX (previsto in Fase 3).
-- Nessun grafico interattivo (previsto in Fase 3).
+- Nessun grafico interattivo; il report HTML include grafici statici.
 
 ---
 
