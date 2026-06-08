@@ -107,6 +107,36 @@ class TestHtmlReportCharts(unittest.TestCase):
         self.assertIn(">Sistema</span>", html)
         self.assertNotIn(">critical</span>", html)
 
+    def test_body_uses_sans_serif_not_monospace(self):
+        """Body font must be sans-serif; monospace must not be the global default."""
+        from gdlex_inspector.report import _MATRIX_CSS
+        # sans-serif must appear in the body block
+        body_block = _MATRIX_CSS.split("body {", 1)[1].split("}", 1)[0]
+        self.assertIn("sans-serif", body_block)
+        # monospace must NOT appear in the body block
+        self.assertNotIn("monospace", body_block)
+
+    def test_path_class_uses_monospace(self):
+        """.path must declare a monospace font for file/directory paths."""
+        from gdlex_inspector.report import _MATRIX_CSS
+        self.assertIn(".path", _MATRIX_CSS)
+        path_block = _MATRIX_CSS.split(".path {", 1)[1].split("}", 1)[0]
+        self.assertIn("monospace", path_block)
+
+    def test_html_contains_size_units_and_sensitivity(self):
+        """IEC size units and Sensibilità column must survive CSS changes."""
+        from gdlex_inspector.models import FileEntry
+        result = _make_result()
+        result.top_files = [
+            FileEntry(path="/home/user/big.iso", size=2 * 1024 * 1024,
+                      category="other", risk_level="low")
+        ]
+        html = to_html(result)
+        self.assertIn("MiB", html)
+        self.assertIn("Sensibilità", html)
+        self.assertIn('id="category-chart"', html)
+        self.assertIn('id="top-directories-chart"', html)
+
 
 if __name__ == "__main__":
     unittest.main()

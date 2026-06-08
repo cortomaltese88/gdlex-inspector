@@ -34,8 +34,8 @@ _MATRIX_CSS = """
 body {
     background: #0a0f0a;
     color: #c8ffc8;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 14px;
+    font-family: "Noto Sans", "DejaVu Sans", system-ui, sans-serif;
+    font-size: 15px;
     margin: 0;
     padding: 20px;
 }
@@ -92,11 +92,11 @@ h2 { color: #39ff14; font-size: 1.1em; border-bottom: 1px solid #1a4d1a; padding
 .badge-critical { background: #400000; color: #ff2222; border: 1px solid #800000; font-weight: bold; }
 .badge-system { background: #0b2633; color: #63c7ee; border: 1px solid #24576b; }
 table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-th { background: #0d2b0d; color: #39ff14; text-align: left; padding: 6px 8px; font-size: 0.9em; }
-td { padding: 5px 8px; border-bottom: 1px solid #0d1a0d; word-break: break-all; }
+th { background: #0d2b0d; color: #39ff14; text-align: left; padding: 7px 10px; font-size: 0.9em; }
+td { padding: 6px 10px; border-bottom: 1px solid #0d1a0d; word-break: break-all; }
 tr:hover td { background: #0d1a0d; }
 .size { text-align: right; white-space: nowrap; }
-.path { font-size: 0.85em; }
+.path { font-family: 'Courier New', Courier, monospace; font-size: 0.85em; }
 .warn { color: #ffcc00; font-size: 0.85em; }
 .issue { color: #ff6060; font-size: 0.85em; }
 .footer { color: #2a5c2a; font-size: 0.8em; margin-top: 32px; border-top: 1px solid #1a3a1a; padding-top: 8px; }
