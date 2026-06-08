@@ -50,7 +50,7 @@ Nessun codice è stato copiato o derivato da tali progetti.
 ## Installazione locale
 
 ```bash
-cd /home/marco/progetti/gdlex-inspector
+cd /percorso/gdlex-inspector
 pip install -e .
 ```
 
@@ -69,7 +69,7 @@ richiede `sudo` né accesso alla rete:
 
 ```bash
 ./scripts/build_deb.sh
-sudo apt install ./dist/gdlex-inspector_0.1.0_all.deb
+sudo apt install ./dist/*.deb
 ```
 
 Il pacchetto dipende da `python3` e `python3-pyside6`. Dopo l'installazione:
@@ -189,10 +189,10 @@ top cartelle), senza JavaScript obbligatorio né dipendenze esterne.
 
 ---
 
-## GUI (sperimentale — Step 2A)
+## GUI
 
-> **Stato: sperimentale.** La GUI è funzionale ma in fase di sviluppo attivo.
-> Richiede un ambiente grafico (X11/Wayland). Non funziona in ambienti headless.
+> La GUI richiede un ambiente grafico (X11/Wayland) e non funziona in
+> ambienti headless.
 
 ### Installazione dipendenza GUI
 
@@ -249,7 +249,7 @@ Se si usa direttamente il repository sorgente (senza pacchetto .deb), installare
 il progetto in modalità editable per rendere disponibile il comando `gdlex-inspector`:
 
 ```bash
-cd /home/marco/progetti/gdlex-inspector
+cd /percorso/gdlex-inspector
 python3 -m pip install -e ".[gui]"
 ```
 
@@ -304,7 +304,7 @@ python3 -m gdlex_inspector gui
 ## Limiti della prima versione (v0.1.0)
 
 - Solo scanner Python interno (nessun backend esterno gdu/dust/duf).
-- GUI sperimentale disponibile (Fase 2 Step 2A — PySide6/Matrix).
+- GUI PySide6 disponibile con tema Matrix.
 - Nessuna copia backup PST reale (predisposta, non implementata — Fase 4).
 - Nessuna connessione SSH reale (predisposta, non implementata — Fase 5).
 - Nessun Wake-on-LAN GUI (solo funzioni utility — Fase 5).

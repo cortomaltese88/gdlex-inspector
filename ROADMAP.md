@@ -31,7 +31,7 @@
 
 ## Fase 2 — GUI Matrix
 
-> **Step 2A completato (sperimentale)** — GUI minimale funzionale con tema Matrix.
+> GUI funzionale con tema Matrix; restano gli ampliamenti elencati sotto.
 
 - [x] GUI PySide6 con tema scuro Matrix coerente con GD LEX *(Step 2A)*
 - [x] Selezione percorso con dialogo *(Step 2A)*
@@ -113,11 +113,12 @@ Uso esclusivamente come processo esterno tramite subprocess, con output normaliz
 
 ## Fase 7 — Packaging
 
-- [ ] Pacchetto Debian (`dpkg`)
+- [x] Pacchetto Debian (`dpkg`)
 - [ ] Eventuale AppImage Linux
 - [ ] Eseguibile Windows portable (PyInstaller o Nuitka)
 - [ ] Eventuale installer Windows
-- [ ] Icone desktop (Linux `.desktop`, Windows `.ico`)
+- [x] Icona e voce desktop Linux (`.svg`, `.desktop`)
+- [ ] Icona desktop Windows (`.ico`)
 - [ ] GitHub Releases
 - [ ] Valutare APT repo solo se progetto pubblico
 

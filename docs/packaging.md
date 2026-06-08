@@ -5,7 +5,7 @@ and without downloading dependencies:
 
 ```bash
 ./scripts/build_deb.sh
-sudo apt install ./dist/gdlex-inspector_0.1.0_all.deb
+sudo apt install ./dist/*.deb
 ```
 
 The version in the package filename and control metadata is read from

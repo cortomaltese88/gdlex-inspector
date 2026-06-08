@@ -18,15 +18,16 @@
 
 ## GUI
 
-- [ ] Preparare GUI Matrix PySide6
-- [ ] Definire layout principale: barra laterale + pannello risultati
-- [ ] Integrare selezione percorso con dialogo
+- [x] Preparare GUI Matrix PySide6
+- [x] Definire layout principale: barra laterale + pannello risultati
+- [x] Integrare selezione percorso con dialogo
 - [ ] Integrare grafico donut categorie
 - [ ] Integrare grafico barre top cartelle
-- [ ] Aggiungere doppio clic / apri percorso
+- [x] Aggiungere doppio clic / apri percorso
 - [ ] Aggiungere menu contestuale copia percorso
-- [ ] Aggiungere status bar e barra progresso
-- [ ] Eseguire scansione in thread separato
+- [x] Aggiungere status bar
+- [ ] Aggiungere barra progresso
+- [x] Eseguire scansione in thread separato
 
 ## Outlook / PST
 
@@ -54,9 +55,9 @@
 
 ## Packaging
 
-- [ ] Preparare pacchetto Debian
+- [x] Preparare pacchetto Debian
 - [ ] Preparare eventuale AppImage Linux
 - [ ] Preparare eseguibile Windows portable
 - [ ] Valutare installer Windows
-- [ ] Aggiungere icone desktop
+- [x] Aggiungere icone desktop
 - [ ] Preparare GitHub Releases
