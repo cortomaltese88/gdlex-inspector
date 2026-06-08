@@ -12,6 +12,7 @@ from .backend import choose_backend
 from .platform_info import get_platform_summary
 from .report import _fmt_size, to_csv, to_html, to_json
 from .risk import risk_label_for_display, risk_style_for_display
+from .scan_profiles import get_default_profiles, get_profile, resolve_target_path
 from .scanner import parse_size, scan_directory
 from .system_profile import detect_system_profile
 
@@ -99,8 +100,45 @@ def cmd_system_info(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_profiles(args: argparse.Namespace) -> int:
+    profiles = get_default_profiles()
+    if args.json:
+        print(json.dumps([profile.to_dict() for profile in profiles], indent=2))
+        return 0
+
+    print("Profili di scansione disponibili:")
+    for profile in profiles:
+        depth = "completa" if profile.max_depth is None else str(profile.max_depth)
+        print(f"- {profile.id:<20} {profile.label:<20} {profile.estimated_speed}")
+        print(
+            f"  target: {profile.target_path} | profondita: {depth} | "
+            f"top: {profile.top}"
+        )
+        if profile.caution:
+            print(f"  attenzione: {profile.caution}")
+    return 0
+
+
 def cmd_scan(args: argparse.Namespace) -> int:
-    path = args.path
+    scan_profile = None
+    if args.profile:
+        scan_profile = get_profile(args.profile)
+        if scan_profile is None:
+            available = ", ".join(
+                profile.id for profile in get_default_profiles()
+            )
+            print(
+                f"Error: unknown scan profile {args.profile!r}. "
+                f"Available profiles: {available}",
+                file=sys.stderr,
+            )
+            return 2
+
+    path = args.path or (scan_profile.target_path if scan_profile else None)
+    if path is None:
+        print("Error: a path or --profile is required.", file=sys.stderr)
+        return 2
+    path = resolve_target_path(path)
     if not os.path.exists(path):
         print(f"Error: path does not exist: {path!r}", file=sys.stderr)
         return 1
@@ -108,33 +146,50 @@ def cmd_scan(args: argparse.Namespace) -> int:
         print(f"Error: path is not a directory: {path!r}", file=sys.stderr)
         return 1
 
-    min_size = 0
-    if args.min_size:
+    min_size = scan_profile.min_size if scan_profile else 0
+    if args.min_size is not None:
         try:
             min_size = parse_size(args.min_size)
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             return 1
 
-    exclude = list(args.exclude) if args.exclude else []
+    top = args.top if args.top is not None else (
+        scan_profile.top if scan_profile else 10
+    )
+    max_depth = args.max_depth if args.max_depth is not None else (
+        scan_profile.max_depth if scan_profile else None
+    )
+    follow_symlinks = (
+        args.follow_symlinks
+        if args.follow_symlinks is not None
+        else (scan_profile.follow_symlinks if scan_profile else False)
+    )
+    exclude = (
+        list(args.exclude)
+        if args.exclude is not None
+        else (list(scan_profile.excludes) if scan_profile else [])
+    )
     backend = choose_backend(getattr(args, "backend", None))
 
     print(BANNER.format(version=__version__))
+    if scan_profile:
+        print(f"  Profile:  {scan_profile.id} ({scan_profile.label})")
     print(f"  Scanning: {os.path.abspath(path)}")
     print("  Please wait...", flush=True)
 
     result = scan_directory(
         root=path,
-        top_n=args.top,
+        top_n=top,
         min_size=min_size,
-        max_depth=args.max_depth,
-        follow_symlinks=args.follow_symlinks,
+        max_depth=max_depth,
+        follow_symlinks=follow_symlinks,
         exclude_patterns=exclude,
     )
     result.backend_used = backend
     result.platform_info = get_platform_summary()
 
-    _print_result(result, args.top)
+    _print_result(result, top)
 
     if args.json:
         json_path = args.json
@@ -180,6 +235,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print the system profile as JSON.",
     )
 
+    profiles_p = sub.add_parser(
+        "profiles",
+        help="List scan profiles suited to the current system.",
+    )
+    profiles_p.add_argument(
+        "--json", action="store_true",
+        help="Print scan profiles as JSON.",
+    )
+
     gui_p = sub.add_parser("gui", help="Launch the graphical interface (requires PySide6).")
     gui_p.add_argument(
         "--path", default="", metavar="DIR",
@@ -187,8 +251,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     scan_p = sub.add_parser("scan", help="Scan a directory and report disk usage.")
-    scan_p.add_argument("path", help="Directory to scan.")
-    scan_p.add_argument("--top", type=int, default=10, metavar="N",
+    scan_p.add_argument("path", nargs="?", help="Directory to scan.")
+    scan_p.add_argument("--profile", metavar="ID",
+                        help="Use defaults from a scan profile.")
+    scan_p.add_argument("--top", type=int, default=None, metavar="N",
                         help="Number of top files/dirs to show (default: 10).")
     scan_p.add_argument("--min-size", metavar="SIZE",
                         help="Minimum file size to include in top list (e.g. 100M).")
@@ -202,7 +268,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Export CSV report to this path.")
     scan_p.add_argument("--exclude", metavar="PATTERN", action="append",
                         help="Exclude paths matching this glob pattern (repeatable).")
-    scan_p.add_argument("--follow-symlinks", action="store_true", default=False,
+    scan_p.add_argument("--follow-symlinks", action="store_true", default=None,
                         help="Follow symbolic links (disabled by default).")
 
     return parser
@@ -219,6 +285,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_version(args)
     if args.command == "system-info":
         return cmd_system_info(args)
+    if args.command == "profiles":
+        return cmd_profiles(args)
     if args.command == "scan":
         return cmd_scan(args)
     if args.command == "gui":

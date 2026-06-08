@@ -101,6 +101,10 @@ python -m gdlex_inspector --help
 python -m gdlex_inspector system-info
 python -m gdlex_inspector system-info --json
 
+# Profili di scansione disponibili
+python -m gdlex_inspector profiles
+python -m gdlex_inspector profiles --json
+
 # Scansione base
 python -m gdlex_inspector scan /percorso
 
@@ -131,7 +135,27 @@ gdlex-inspector system-info --json
 
 Il comando rileva sistema operativo, ambiente WSL o desktop e mount locali,
 Windows, di rete, temporanei, virtuali e FUSE. Il profilo è interamente
-read-only e costituisce la base per futuri profili di scansione intelligenti.
+read-only e costituisce la base per i profili di scansione intelligenti.
+
+---
+
+## Profili di scansione
+
+```bash
+gdlex-inspector profiles
+gdlex-inspector profiles --json
+gdlex-inspector scan --profile quick-home
+gdlex-inspector scan --profile system-safe
+```
+
+I profili applicano target e limiti prudenziali in base al sistema e ai mount
+rilevati. Sono disponibili profili per home, sistema e sviluppo; quelli per
+mount Windows e cloud/FUSE vengono aggiunti solo quando pertinenti. Un percorso
+esplicito e le opzioni `--top`, `--min-size`, `--max-depth`, `--exclude` e
+`--follow-symlinks` prevalgono sui valori del profilo.
+
+Tutte le scansioni restano read-only: i profili non cancellano, spostano o
+modificano file.
 
 ---
 
@@ -195,6 +219,7 @@ top cartelle), senza JavaScript obbligatorio né dipendenze esterne.
 
 | Opzione | Descrizione |
 |---|---|
+| `--profile ID` | Applica un profilo di scansione predefinito |
 | `--top N` | Numero di file/cartelle in cima (default: 10) |
 | `--min-size SIZE` | Soglia minima (es. `100K`, `500M`, `2G`) |
 | `--max-depth N` | Profondità massima di ricorsione |

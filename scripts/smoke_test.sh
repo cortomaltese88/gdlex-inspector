@@ -16,15 +16,15 @@ echo "=== gdlex-inspector smoke test ==="
 echo "Project root: $PROJECT_ROOT"
 echo ""
 
-echo "[1/11] --help"
+echo "[1/14] --help"
 $PYTHON -m gdlex_inspector --help > /dev/null
 echo "  OK"
 
-echo "[2/11] version"
+echo "[2/14] version"
 $PYTHON -m gdlex_inspector version
 echo "  OK"
 
-echo "[3/11] scan on temp directory"
+echo "[3/14] scan on temp directory"
 TMPDIR_TEST="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
 
@@ -39,7 +39,7 @@ $PYTHON -c "open('$TMPDIR_TEST/subdir/big.bin','wb').write(b'z'*102400)"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --top 5
 echo "  OK"
 
-echo "[4/11] export JSON"
+echo "[4/14] export JSON"
 JSON_OUT="$TMPDIR_TEST/report.json"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --json "$JSON_OUT" > /dev/null
 if [[ ! -s "$JSON_OUT" ]]; then
@@ -48,7 +48,7 @@ if [[ ! -s "$JSON_OUT" ]]; then
 fi
 echo "  OK: $JSON_OUT ($(wc -c < "$JSON_OUT") bytes)"
 
-echo "[5/11] export HTML"
+echo "[5/14] export HTML"
 HTML_OUT="$TMPDIR_TEST/report.html"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --html "$HTML_OUT" > /dev/null
 if [[ ! -s "$HTML_OUT" ]]; then
@@ -57,7 +57,7 @@ if [[ ! -s "$HTML_OUT" ]]; then
 fi
 echo "  OK: $HTML_OUT ($(wc -c < "$HTML_OUT") bytes)"
 
-echo "[6/11] export CSV"
+echo "[6/14] export CSV"
 CSV_OUT="$TMPDIR_TEST/report.csv"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --csv "$CSV_OUT" > /dev/null
 if [[ ! -s "$CSV_OUT" ]]; then
@@ -73,17 +73,32 @@ for section in top_files top_dirs extensions categories issues; do
 done
 echo "  OK: $CSV_OUT ($(wc -c < "$CSV_OUT") bytes)"
 
-echo "[7/11] system info"
+echo "[7/14] system info"
 $PYTHON -m gdlex_inspector system-info > /dev/null
 echo "  OK"
 
-echo "[8/11] system info JSON"
+echo "[8/14] system info JSON"
 SYSTEM_JSON="$TMPDIR_TEST/system-info.json"
 $PYTHON -m gdlex_inspector system-info --json > "$SYSTEM_JSON"
 $PYTHON -c "import json; json.load(open('$SYSTEM_JSON', encoding='utf-8'))"
 echo "  OK: valid JSON"
 
-echo "[9/11] desktop integration files"
+echo "[9/14] scan profiles"
+$PYTHON -m gdlex_inspector profiles > /dev/null
+echo "  OK"
+
+echo "[10/14] scan profiles JSON"
+PROFILES_JSON="$TMPDIR_TEST/profiles.json"
+$PYTHON -m gdlex_inspector profiles --json > "$PROFILES_JSON"
+$PYTHON -c "import json; json.load(open('$PROFILES_JSON', encoding='utf-8'))"
+echo "  OK: valid JSON"
+
+echo "[11/14] scan with profile and path override"
+$PYTHON -m gdlex_inspector scan --profile quick-home "$TMPDIR_TEST" \
+  --max-depth 1 --top 5 > /dev/null
+echo "  OK"
+
+echo "[12/14] desktop integration files"
 DESKTOP_FILE="$PROJECT_ROOT/packaging/linux/gdlex-inspector.desktop"
 ICON_FILE="$PROJECT_ROOT/gdlex_inspector/assets/gdlex-inspector.svg"
 INSTALL_SCRIPT="$PROJECT_ROOT/scripts/install_desktop_entry.sh"
@@ -105,7 +120,7 @@ if [[ ! -x "$INSTALL_SCRIPT" ]]; then
 fi
 echo "  OK"
 
-echo "[10/11] Debian package build"
+echo "[13/14] Debian package build"
 BUILD_SCRIPT="$PROJECT_ROOT/scripts/build_deb.sh"
 if [[ ! -x "$BUILD_SCRIPT" ]]; then
   echo "  FAIL: build script missing or not executable: $BUILD_SCRIPT" >&2
@@ -121,6 +136,7 @@ dpkg-deb --info "$DEB_FILE" > /dev/null
 DEB_CONTENTS="$(dpkg-deb --contents "$DEB_FILE")"
 for packaged_path in \
   "./usr/bin/gdlex-inspector" \
+  "./usr/lib/gdlex-inspector/gdlex_inspector/scan_profiles.py" \
   "./usr/share/applications/gdlex-inspector.desktop" \
   "./usr/share/icons/hicolor/scalable/apps/gdlex-inspector.svg"; do
   if ! grep -q "$packaged_path" <<< "$DEB_CONTENTS"; then
@@ -130,7 +146,7 @@ for packaged_path in \
 done
 echo "  OK: $DEB_FILE"
 
-echo "[11/11] unit tests"
+echo "[14/14] unit tests"
 $PYTHON -m unittest discover -s tests -v 2>&1 | tail -5
 echo "  OK"
 
