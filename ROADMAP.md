@@ -16,7 +16,7 @@
 
 - [ ] Scansione file e cartelle
 - [ ] Top file per dimensione
-- [ ] Top directory per dimensione (albero completo)
+- [x] Top directory per dimensione (albero completo)
 - [ ] Riepilogo per estensione
 - [ ] Riepilogo per categoria euristica
 - [ ] Classificazione prudenziale (rischio)

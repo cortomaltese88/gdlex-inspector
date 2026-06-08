@@ -153,17 +153,34 @@ def scan_directory(
     all_files.sort(key=lambda f: f.size, reverse=True)
     result.top_files = [f for f in all_files if f.size >= min_size][:top_n]
 
+    # Compute recursive directory sizes: propagate each dir's direct file
+    # sizes up to all ancestor directories within root.
+    abs_root = os.path.abspath(root)
+    recursive_dir_sizes: dict[str, int] = defaultdict(int)
+    recursive_dir_counts: dict[str, int] = defaultdict(int)
+    for dirpath, direct_size in dir_sizes.items():
+        d = dirpath
+        while True:
+            recursive_dir_sizes[d] += direct_size
+            recursive_dir_counts[d] += dir_counts[dirpath]
+            if os.path.abspath(d) == abs_root:
+                break
+            parent = os.path.dirname(d)
+            if parent == d:  # filesystem root, safety stop
+                break
+            d = parent
+
     # Top directories
     dir_entries = [
         DirectoryEntry(
             path=d,
             size=s,
-            file_count=dir_counts[d],
+            file_count=recursive_dir_counts[d],
             category=classify_path(d),
             risk_level=classify_risk(d, classify_path(d))[0],
             risk_message=classify_risk(d, classify_path(d))[1],
         )
-        for d, s in dir_sizes.items()
+        for d, s in recursive_dir_sizes.items()
     ]
     dir_entries.sort(key=lambda d: d.size, reverse=True)
     result.top_dirs = dir_entries[:top_n]
