@@ -1,4 +1,4 @@
-"""PySide6 GUI for GD LEX Inspector — Matrix dark theme. Experimental.
+"""PySide6 GUI for GD LEX Inspector — multi-theme, splash screen, menu bar.
 
 Launch with: python3 -m gdlex_inspector gui
 Requires PySide6: pip install PySide6
@@ -15,11 +15,23 @@ from . import gui_theme
 from . import gui_charts
 
 try:
-    from PySide6.QtCore import Qt, QSettings, QThread, Signal
-    from PySide6.QtGui import QAction, QColor, QIcon
+    from PySide6.QtCore import Qt, QEventLoop, QRectF, QSettings, QThread, QTimer, Signal
+    from PySide6.QtGui import (
+        QAction,
+        QActionGroup,
+        QBrush,
+        QColor,
+        QFont,
+        QIcon,
+        QPainter,
+        QPen,
+        QPixmap,
+    )
     from PySide6.QtWidgets import (
         QAbstractItemView,
         QApplication,
+        QDialog,
+        QDialogButtonBox,
         QFileDialog,
         QGroupBox,
         QHBoxLayout,
@@ -31,6 +43,7 @@ try:
         QMessageBox,
         QPushButton,
         QSpinBox,
+        QSplashScreen,
         QSplitter,
         QTableWidget,
         QTableWidgetItem,
@@ -48,7 +61,204 @@ _SETTINGS_ORG = "GDLex"
 _SETTINGS_APP = "Inspector"
 
 
+def _get_version() -> str:
+    try:
+        from . import __version__
+        return __version__
+    except Exception:
+        return "?"
+
+
+def _get_svg_path() -> str:
+    return os.path.join(os.path.dirname(__file__), "assets", "gdlex-inspector.svg")
+
+
 if _PYSIDE6_AVAILABLE:
+
+    # ------------------------------------------------------------------
+    # Splash screen
+    # ------------------------------------------------------------------
+
+    class _SplashScreen(QSplashScreen):
+        """Matrix-styled animated splash screen with progress bar."""
+
+        _W = 560
+        _H = 320
+
+        def __init__(self) -> None:
+            pixmap = QPixmap(self._W, self._H)
+            pixmap.fill(QColor("#0a0f0a"))
+            super().__init__(pixmap, Qt.WindowType.SplashScreen)
+            self._progress = 0
+            self._version = _get_version()
+            self._render()
+            self._timer = QTimer(self)
+            self._timer.timeout.connect(self._tick)
+            self._timer.start(25)
+
+        def _tick(self) -> None:
+            self._progress = min(100, self._progress + 2)
+            self._render()
+            if self._progress >= 100:
+                self._timer.stop()
+
+        def _render(self) -> None:
+            pixmap = QPixmap(self._W, self._H)
+            pixmap.fill(QColor("#0a0f0a"))
+            p = QPainter(pixmap)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            w, h = float(self._W), float(self._H)
+
+            # Border
+            p.setPen(QPen(QColor("#1a4d1a"), 2))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawRect(QRectF(1.0, 1.0, w - 2.0, h - 2.0))
+
+            # Inner subtle glow border
+            p.setPen(QPen(QColor("#0d2b0d"), 1))
+            p.drawRect(QRectF(4.0, 4.0, w - 8.0, h - 8.0))
+
+            # Title
+            title_font = QFont("Courier New", 26, QFont.Weight.Bold)
+            p.setFont(title_font)
+            p.setPen(QColor("#00ff41"))
+            p.drawText(QRectF(20.0, 28.0, w - 40.0, 52.0), Qt.AlignmentFlag.AlignCenter,
+                       "GD LEX Inspector")
+
+            # Subtitle
+            sub_font = QFont("Courier New", 10)
+            p.setFont(sub_font)
+            p.setPen(QColor("#6af06a"))
+            p.drawText(QRectF(20.0, 92.0, w - 40.0, 28.0), Qt.AlignmentFlag.AlignCenter,
+                       "Disk inspection and prudential reporting tool")
+
+            # Separator line
+            p.setPen(QPen(QColor("#1a4d1a"), 1))
+            p.drawLine(int(w * 0.15), 132, int(w * 0.85), 132)
+
+            # Version
+            ver_font = QFont("Courier New", 11, QFont.Weight.Bold)
+            p.setFont(ver_font)
+            p.setPen(QColor("#39ff14"))
+            p.drawText(QRectF(20.0, 142.0, w - 40.0, 26.0), Qt.AlignmentFlag.AlignCenter,
+                       f"v{self._version}")
+
+            # Credits
+            cred_font = QFont("Courier New", 9)
+            p.setFont(cred_font)
+            p.setPen(QColor("#6af06a"))
+            p.drawText(QRectF(20.0, 178.0, w - 40.0, 22.0), Qt.AlignmentFlag.AlignCenter,
+                       "STUDIO GD LEX")
+            p.drawText(QRectF(20.0, 198.0, w - 40.0, 20.0), Qt.AlignmentFlag.AlignCenter,
+                       "GPL-3.0-or-later")
+
+            # Progress bar track
+            bar_x, bar_y = 40.0, h - 52.0
+            bar_w, bar_h = w - 80.0, 12.0
+            p.setBrush(QBrush(QColor("#0d1a0d")))
+            p.setPen(QPen(QColor("#1a4d1a"), 1))
+            p.drawRoundedRect(QRectF(bar_x, bar_y, bar_w, bar_h), 4.0, 4.0)
+
+            # Progress bar fill
+            fill_w = bar_w * self._progress / 100.0
+            if fill_w > 0.0:
+                p.setBrush(QBrush(QColor("#00ff41")))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.drawRoundedRect(QRectF(bar_x, bar_y, fill_w, bar_h), 4.0, 4.0)
+
+            # Progress label
+            pct_font = QFont("Courier New", 8)
+            p.setFont(pct_font)
+            p.setPen(QColor("#6af06a"))
+            p.drawText(
+                QRectF(bar_x, bar_y + bar_h + 6.0, bar_w, 16.0),
+                Qt.AlignmentFlag.AlignCenter,
+                f"Avvio... {self._progress}%",
+            )
+
+            p.end()
+            self.setPixmap(pixmap)
+
+    # ------------------------------------------------------------------
+    # About dialog
+    # ------------------------------------------------------------------
+
+    class _AboutDialog(QDialog):
+        """Information dialog for GD LEX Inspector."""
+
+        def __init__(self, parent: QWidget | None = None) -> None:
+            super().__init__(parent)
+            self.setWindowTitle("Informazioni su GD LEX Inspector")
+            self.setFixedSize(440, 360)
+            self.setModal(True)
+            self._build_ui()
+
+        def _build_ui(self) -> None:
+            from . import __version__, __author__, __license__
+            colors = gui_theme.get_current_colors()
+            accent = colors["fg_accent"]
+
+            layout = QVBoxLayout(self)
+            layout.setSpacing(10)
+            layout.setContentsMargins(28, 24, 28, 20)
+
+            svg_path = _get_svg_path()
+            if os.path.isfile(svg_path):
+                icon_lbl = QLabel()
+                icon_lbl.setPixmap(QIcon(svg_path).pixmap(56, 56))
+                icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                layout.addWidget(icon_lbl)
+
+            name_lbl = QLabel("GD LEX Inspector")
+            name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            name_lbl.setStyleSheet(
+                f"color: {accent}; font-size: 20px; font-weight: bold;"
+            )
+            layout.addWidget(name_lbl)
+
+            ver_lbl = QLabel(f"Versione {__version__}")
+            ver_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            ver_lbl.setStyleSheet(f"color: {colors['fg_normal']}; font-size: 13px;")
+            layout.addWidget(ver_lbl)
+
+            layout.addSpacing(6)
+
+            desc_lbl = QLabel("Disk inspection and prudential reporting tool")
+            desc_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            desc_lbl.setWordWrap(True)
+            layout.addWidget(desc_lbl)
+
+            layout.addSpacing(6)
+
+            credits_lbl = QLabel(f"Sviluppato da <b>{__author__}</b>")
+            credits_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            credits_lbl.setStyleSheet(f"color: {colors['fg_normal']};")
+            layout.addWidget(credits_lbl)
+
+            lic_lbl = QLabel(f"Licenza: {__license__}")
+            lic_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(lic_lbl)
+
+            layout.addSpacing(4)
+
+            repo_lbl = QLabel(
+                f'<a href="https://github.com/studiogdlex/gdlex-inspector"'
+                f' style="color:{accent};">'
+                "github.com/studiogdlex/gdlex-inspector</a>"
+            )
+            repo_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            repo_lbl.setOpenExternalLinks(True)
+            layout.addWidget(repo_lbl)
+
+            layout.addStretch()
+
+            buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+            buttons.accepted.connect(self.accept)
+            layout.addWidget(buttons)
+
+    # ------------------------------------------------------------------
+    # Scan worker
+    # ------------------------------------------------------------------
 
     class ScanWorker(QThread):
         log = Signal(str)
@@ -86,32 +296,43 @@ if _PYSIDE6_AVAILABLE:
             except Exception as exc:
                 self.error.emit(str(exc))
 
+    # ------------------------------------------------------------------
+    # Main window
+    # ------------------------------------------------------------------
+
     class MainWindow(QMainWindow):
         def __init__(self, initial_path: str = "") -> None:
             super().__init__()
             self._result = None
             self._worker: ScanWorker | None = None
+            self._theme_actions: dict[str, QAction] = {}
             self._setup_ui(initial_path)
 
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
         # UI construction
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
 
         def _setup_ui(self, initial_path: str) -> None:
-            self.setWindowTitle("GD LEX Inspector")
-            self.resize(1100, 750)
-            self.setMinimumSize(800, 550)
-            self.setStyleSheet(gui_theme.STYLESHEET)
+            version = _get_version()
+            self.setWindowTitle(f"GD LEX Inspector  v{version}")
+            self.resize(1180, 780)
+            self.setMinimumSize(860, 580)
 
-            svg_path = os.path.join(os.path.dirname(__file__), "assets", "gdlex-inspector.svg")
+            svg_path = _get_svg_path()
             if os.path.isfile(svg_path):
                 self.setWindowIcon(QIcon(svg_path))
+
+            # Apply theme (loads theme from settings first)
+            self._load_settings(initial_path)
+            self.setStyleSheet(gui_theme.get_stylesheet())
+
+            self._build_menu_bar()
 
             central = QWidget()
             self.setCentralWidget(central)
             root_layout = QVBoxLayout(central)
-            root_layout.setSpacing(8)
-            root_layout.setContentsMargins(10, 10, 10, 10)
+            root_layout.setSpacing(10)
+            root_layout.setContentsMargins(12, 12, 12, 12)
 
             root_layout.addWidget(self._build_path_group(initial_path))
             root_layout.addWidget(self._build_options_group())
@@ -121,17 +342,67 @@ if _PYSIDE6_AVAILABLE:
             self._statusbar = self.statusBar()
             self._statusbar.showMessage("Pronto.")
 
+            ver_label = QLabel(f"GD LEX Inspector v{version}  |  STUDIO GD LEX")
+            ver_label.setObjectName("statusVersionLabel")
+            self._statusbar.addPermanentWidget(ver_label)
+
             self._connect_signals()
-            self._load_settings(initial_path)
+
+        def _build_menu_bar(self) -> None:
+            menubar = self.menuBar()
+
+            # --- File ---
+            file_menu = menubar.addMenu("&File")
+            quit_act = QAction("E&sci", self)
+            quit_act.setShortcut("Ctrl+Q")
+            quit_act.triggered.connect(self.close)
+            file_menu.addAction(quit_act)
+
+            # --- Visualizza ---
+            view_menu = menubar.addMenu("&Visualizza")
+            theme_menu = QMenu("&Tema", self)
+            view_menu.addMenu(theme_menu)
+
+            theme_group = QActionGroup(self)
+            theme_group.setExclusive(True)
+            current_theme = gui_theme.get_current_theme_name()
+
+            for name in gui_theme.AVAILABLE_THEMES:
+                act = QAction(name, self)
+                act.setCheckable(True)
+                act.setChecked(name == current_theme)
+                act.triggered.connect(lambda checked, n=name: self._apply_theme(n))
+                theme_group.addAction(act)
+                theme_menu.addAction(act)
+                self._theme_actions[name] = act
+
+            # --- Aiuto ---
+            help_menu = menubar.addMenu("&Aiuto")
+            about_act = QAction("&Informazioni su GD LEX Inspector...", self)
+            about_act.setShortcut("F1")
+            about_act.triggered.connect(self._show_about)
+            help_menu.addAction(about_act)
+
+            help_menu.addSeparator()
+
+            repo_act = QAction("Apri repository GitHub", self)
+            repo_act.triggered.connect(self._open_github)
+            help_menu.addAction(repo_act)
 
         def _build_path_group(self, initial_path: str) -> QGroupBox:
             group = QGroupBox("Percorso da analizzare")
             layout = QHBoxLayout(group)
+            layout.setSpacing(10)
+            layout.setContentsMargins(12, 8, 12, 10)
             self._path_edit = QLineEdit(initial_path)
             self._path_edit.setPlaceholderText("Seleziona o inserisci il percorso...")
-            browse_btn = QPushButton("Sfoglia")
+            self._path_edit.returnPressed.connect(self._start_scan)
+            browse_btn = QPushButton("Sfoglia…")
+            browse_btn.setFixedWidth(100)
             browse_btn.clicked.connect(self._browse_path)
-            layout.addWidget(QLabel("Percorso:"))
+            lbl = QLabel("Percorso:")
+            lbl.setFixedWidth(72)
+            layout.addWidget(lbl)
             layout.addWidget(self._path_edit, 1)
             layout.addWidget(browse_btn)
             return group
@@ -139,33 +410,40 @@ if _PYSIDE6_AVAILABLE:
         def _build_options_group(self) -> QGroupBox:
             group = QGroupBox("Opzioni scansione")
             layout = QHBoxLayout(group)
-            layout.setSpacing(10)
+            layout.setSpacing(14)
+            layout.setContentsMargins(12, 8, 12, 10)
 
-            layout.addWidget(QLabel("Top N:"))
+            top_lbl = QLabel("Top N:")
+            top_lbl.setFixedWidth(50)
+            layout.addWidget(top_lbl)
             self._top_spin = QSpinBox()
             self._top_spin.setRange(1, 500)
             self._top_spin.setValue(10)
-            self._top_spin.setFixedWidth(70)
+            self._top_spin.setFixedWidth(75)
             layout.addWidget(self._top_spin)
 
-            layout.addSpacing(8)
-            layout.addWidget(QLabel("Min size:"))
+            layout.addSpacing(6)
+            ms_lbl = QLabel("Min size:")
+            ms_lbl.setFixedWidth(66)
+            layout.addWidget(ms_lbl)
             self._min_size_edit = QLineEdit()
             self._min_size_edit.setPlaceholderText("es. 100M")
-            self._min_size_edit.setFixedWidth(90)
+            self._min_size_edit.setFixedWidth(96)
             layout.addWidget(self._min_size_edit)
 
-            layout.addSpacing(8)
-            layout.addWidget(QLabel("Max depth (0=illimitato):"))
+            layout.addSpacing(6)
+            depth_lbl = QLabel("Max depth (0=∞):")
+            layout.addWidget(depth_lbl)
             self._depth_spin = QSpinBox()
             self._depth_spin.setRange(0, 99)
             self._depth_spin.setValue(0)
-            self._depth_spin.setFixedWidth(70)
+            self._depth_spin.setFixedWidth(75)
             layout.addWidget(self._depth_spin)
 
             layout.addStretch()
-            self._scan_btn = QPushButton("Scansiona")
+            self._scan_btn = QPushButton("▶  Scansiona")
             self._scan_btn.setDefault(True)
+            self._scan_btn.setMinimumWidth(130)
             self._scan_btn.clicked.connect(self._start_scan)
             layout.addWidget(self._scan_btn)
             return group
@@ -175,8 +453,9 @@ if _PYSIDE6_AVAILABLE:
 
             self._log = QTextEdit()
             self._log.setReadOnly(True)
-            self._log.setMaximumHeight(140)
-            self._log.setMinimumHeight(60)
+            self._log.setMaximumHeight(150)
+            self._log.setMinimumHeight(70)
+            self._log.setPlaceholderText("Il log delle operazioni comparirà qui…")
             splitter.addWidget(self._log)
 
             self._tab_widget = QTabWidget()
@@ -194,10 +473,10 @@ if _PYSIDE6_AVAILABLE:
 
             self._charts_tab = gui_charts.ChartsTab()
 
-            self._tab_widget.addTab(self._files_table, "Top file")
-            self._tab_widget.addTab(self._dirs_table, "Top cartelle")
-            self._tab_widget.addTab(self._cats_table, "Categorie")
-            self._tab_widget.addTab(self._charts_tab, "Grafici")
+            self._tab_widget.addTab(self._files_table, "  Top file  ")
+            self._tab_widget.addTab(self._dirs_table, "  Top cartelle  ")
+            self._tab_widget.addTab(self._cats_table, "  Categorie  ")
+            self._tab_widget.addTab(self._charts_tab, "  Grafici  ")
             splitter.addWidget(self._tab_widget)
 
             splitter.setStretchFactor(0, 0)
@@ -206,9 +485,10 @@ if _PYSIDE6_AVAILABLE:
 
         def _build_export_bar(self) -> QHBoxLayout:
             bar = QHBoxLayout()
+            bar.setSpacing(8)
             self._html_btn = QPushButton("Esporta HTML")
             self._json_btn = QPushButton("Esporta JSON")
-            self._csv_btn = QPushButton("Esporta CSV")
+            self._csv_btn  = QPushButton("Esporta CSV")
             self._open_btn = QPushButton("Apri percorso")
 
             for btn in (self._html_btn, self._json_btn, self._csv_btn, self._open_btn):
@@ -233,10 +513,14 @@ if _PYSIDE6_AVAILABLE:
             table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
             table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
             table.setAlternatingRowColors(True)
+            table.setShowGrid(True)
+            table.verticalHeader().setVisible(False)
+            table.verticalHeader().setDefaultSectionSize(28)
             hh = table.horizontalHeader()
             hh.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
             hh.setSectionResizeMode(stretch_col, QHeaderView.ResizeMode.Stretch)
             hh.setStretchLastSection(False)
+            hh.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             return table
 
         def _connect_signals(self) -> None:
@@ -252,21 +536,48 @@ if _PYSIDE6_AVAILABLE:
             self._dirs_table.itemSelectionChanged.connect(self._update_open_btn)
             self._tab_widget.currentChanged.connect(lambda _: self._update_open_btn())
 
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
+        # Theme handling
+        # --------------------------------------------------------------
+
+        def _apply_theme(self, name: str) -> None:
+            gui_theme.set_current_theme(name)
+            self.setStyleSheet(gui_theme.get_stylesheet())
+            for n, act in self._theme_actions.items():
+                act.setChecked(n == name)
+            self._charts_tab.apply_theme()
+            if self._result is not None:
+                self._populate_tables(self._result)
+            s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+            s.setValue("theme", name)
+            self._statusbar.showMessage(f"Tema applicato: {name}")
+
+        # --------------------------------------------------------------
         # Settings persistence
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
 
         def _load_settings(self, initial_path: str) -> None:
             s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+
+            # Theme (loaded early, before stylesheet is set)
+            saved_theme = s.value("theme", "Matrix")
+            if saved_theme not in gui_theme.AVAILABLE_THEMES:
+                saved_theme = "Matrix"
+            gui_theme.set_current_theme(saved_theme)
+
             path = initial_path or s.value("last_path", "")
-            self._path_edit.setText(path)
+            if hasattr(self, "_path_edit"):
+                self._path_edit.setText(path)
             try:
-                self._top_spin.setValue(int(s.value("top_n", 10)))
+                if hasattr(self, "_top_spin"):
+                    self._top_spin.setValue(int(s.value("top_n", 10)))
             except (TypeError, ValueError):
                 pass
-            self._min_size_edit.setText(s.value("min_size", "") or "")
+            if hasattr(self, "_min_size_edit"):
+                self._min_size_edit.setText(s.value("min_size", "") or "")
             try:
-                self._depth_spin.setValue(int(s.value("max_depth", 0)))
+                if hasattr(self, "_depth_spin"):
+                    self._depth_spin.setValue(int(s.value("max_depth", 0)))
             except (TypeError, ValueError):
                 pass
 
@@ -276,14 +587,31 @@ if _PYSIDE6_AVAILABLE:
             s.setValue("top_n", self._top_spin.value())
             s.setValue("min_size", self._min_size_edit.text().strip())
             s.setValue("max_depth", self._depth_spin.value())
+            s.setValue("theme", gui_theme.get_current_theme_name())
 
         def closeEvent(self, event) -> None:
             self._save_settings()
             super().closeEvent(event)
 
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
+        # Dialogs
+        # --------------------------------------------------------------
+
+        def _show_about(self) -> None:
+            dlg = _AboutDialog(self)
+            dlg.exec()
+
+        def _open_github(self) -> None:
+            url = "https://github.com/studiogdlex/gdlex-inspector"
+            try:
+                import webbrowser
+                webbrowser.open(url)
+            except Exception:
+                QMessageBox.information(self, "Repository", url)
+
+        # --------------------------------------------------------------
         # Scan logic
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
 
         def _browse_path(self) -> None:
             start = self._path_edit.text().strip() or os.path.expanduser("~")
@@ -301,7 +629,7 @@ if _PYSIDE6_AVAILABLE:
             for btn in (self._html_btn, self._json_btn, self._csv_btn, self._open_btn):
                 btn.setEnabled(False)
             if running:
-                self._statusbar.showMessage("Scansione in corso...")
+                self._statusbar.showMessage("Scansione in corso…")
                 self._files_table.setRowCount(0)
                 self._dirs_table.setRowCount(0)
                 self._cats_table.setRowCount(0)
@@ -380,9 +708,9 @@ if _PYSIDE6_AVAILABLE:
             self._scan_btn.setEnabled(True)
             self._result = None
 
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
         # Table population
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
 
         def _populate_tables(self, result) -> None:
             from .report import _fmt_size
@@ -419,17 +747,19 @@ if _PYSIDE6_AVAILABLE:
             risk_col: int,
             risk_value: str,
         ) -> None:
-            color_hex = gui_theme.RISK_COLORS.get(risk_value, gui_theme.FG_NORMAL)
+            risk_colors = gui_theme.get_current_risk_colors()
+            color_hex = risk_colors.get(risk_value, gui_theme.get_current_colors()["fg_normal"])
             for col, val in enumerate(values):
                 item = QTableWidgetItem(val)
                 item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
                 if col == risk_col:
                     item.setForeground(QColor(color_hex))
+                    item.setFont(QFont("", -1, QFont.Weight.Bold if risk_value in ("high", "critical") else QFont.Weight.Normal))
                 table.setItem(row, col, item)
 
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
         # Context menu
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
 
         def _show_context_menu(self, table: QTableWidget, pos) -> None:
             row = table.rowAt(pos.y())
@@ -443,16 +773,16 @@ if _PYSIDE6_AVAILABLE:
 
             menu = QMenu(self)
             open_action = QAction("Apri percorso", self)
-            copy_action = QAction("Copia percorso", self)
+            copy_action = QAction("Copia percorso negli appunti", self)
             open_action.triggered.connect(lambda: self._open_path_in_fm(path, is_file=is_file))
             copy_action.triggered.connect(lambda: QApplication.clipboard().setText(path))
             menu.addAction(open_action)
             menu.addAction(copy_action)
             menu.exec(table.viewport().mapToGlobal(pos))
 
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
         # Open path
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
 
         def _update_open_btn(self) -> None:
             if self._result is None:
@@ -505,9 +835,9 @@ if _PYSIDE6_AVAILABLE:
             except Exception as exc:
                 self._log_msg(f"[ERRORE] Impossibile aprire {path}: {exc}")
 
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
         # Export
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------
 
         def _export_html(self) -> None:
             self._export("HTML", "html")
@@ -576,6 +906,20 @@ def launch_gui(initial_path: str = "") -> int:
         return 1
 
     app = QApplication.instance() or QApplication(sys.argv)
+
+    # Show splash
+    splash = _SplashScreen()
+    splash.show()
+    app.processEvents()
+
+    # Build main window while splash is visible
     window = MainWindow(initial_path=initial_path)
+
+    # Wait for splash animation to complete (50 ticks × 25ms = 1250ms)
+    wait_loop = QEventLoop()
+    QTimer.singleShot(1400, wait_loop.quit)
+    wait_loop.exec()
+
+    splash.finish(window)
     window.show()
     return app.exec()

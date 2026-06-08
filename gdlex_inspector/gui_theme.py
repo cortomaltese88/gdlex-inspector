@@ -1,161 +1,376 @@
-"""Matrix dark theme constants and stylesheet for GD LEX Inspector PySide6 GUI."""
+"""Themes for GD LEX Inspector PySide6 GUI.
 
-BG_DARK = "#0a0f0a"
-BG_PANEL = "#0d1a0d"
-BG_TABLE_HEADER = "#0d2b0d"
-FG_BRIGHT = "#00ff41"
-FG_NORMAL = "#c8ffc8"
-FG_DIM = "#6af06a"
-FG_ACCENT = "#39ff14"
-BORDER_COLOR = "#1a4d1a"
+Three built-in themes:
+  - Matrix  : dark green-on-black Matrix aesthetic (default)
+  - Scuro   : professional dark blue/grey
+  - Chiaro  : bright light theme for maximum readability
+"""
 
-RISK_COLORS = {
-    "none": FG_NORMAL,
-    "low": FG_NORMAL,
-    "medium": "#ffcc00",
-    "high": "#ff6060",
-    "critical": "#ff2222",
+from __future__ import annotations
+
+AVAILABLE_THEMES: tuple[str, ...] = ("Matrix", "Scuro", "Chiaro")
+
+# ---------------------------------------------------------------------------
+# Per-theme colour palettes
+# ---------------------------------------------------------------------------
+
+_MATRIX: dict[str, str] = {
+    "bg_dark":           "#0a0f0a",
+    "bg_panel":          "#0d1a0d",
+    "bg_table_header":   "#0d2b0d",
+    "fg_bright":         "#00ff41",
+    "fg_normal":         "#c8ffc8",
+    "fg_dim":            "#6af06a",
+    "fg_accent":         "#39ff14",
+    "border":            "#1a4d1a",
+    "sel_bg":            "#1a4d1a",
+    "sel_fg":            "#00ff41",
+    "alt_row":           "#0b160b",
+    "btn_hover":         "#1a3d1a",
+    "btn_pressed":       "#0d2b0d",
+    "btn_disabled_fg":   "#2a4a2a",
+    "btn_disabled_brd":  "#1a2b1a",
+    "scrollbar_handle":  "#1a4d1a",
+    "bar_track":         "#102810",
+    "font_family":       "'Courier New', Courier, monospace",
 }
 
-STYLESHEET = f"""
+_SCURO: dict[str, str] = {
+    "bg_dark":           "#14172b",
+    "bg_panel":          "#1c2240",
+    "bg_table_header":   "#0f3460",
+    "fg_bright":         "#e8e8f8",
+    "fg_normal":         "#c0c4d8",
+    "fg_dim":            "#8088a8",
+    "fg_accent":         "#7ecfff",
+    "border":            "#2a4a70",
+    "sel_bg":            "#1e4a80",
+    "sel_fg":            "#e8e8f8",
+    "alt_row":           "#111528",
+    "btn_hover":         "#1a3a5e",
+    "btn_pressed":       "#0f2e52",
+    "btn_disabled_fg":   "#3a4a60",
+    "btn_disabled_brd":  "#202c40",
+    "scrollbar_handle":  "#2a4a70",
+    "bar_track":         "#0a1628",
+    "font_family":       "'Segoe UI', 'DejaVu Sans', 'Liberation Sans', sans-serif",
+}
+
+_CHIARO: dict[str, str] = {
+    "bg_dark":           "#eef1f6",
+    "bg_panel":          "#ffffff",
+    "bg_table_header":   "#dce6f0",
+    "fg_bright":         "#0d0d1a",
+    "fg_normal":         "#1e2232",
+    "fg_dim":            "#4a5070",
+    "fg_accent":         "#004ea8",
+    "border":            "#b0bccf",
+    "sel_bg":            "#c2d8f0",
+    "sel_fg":            "#0d0d1a",
+    "alt_row":           "#f4f6fa",
+    "btn_hover":         "#d8e6f4",
+    "btn_pressed":       "#c2d8f0",
+    "btn_disabled_fg":   "#8890a0",
+    "btn_disabled_brd":  "#c8d2dc",
+    "scrollbar_handle":  "#a0afc0",
+    "bar_track":         "#d8e4f0",
+    "font_family":       "'Segoe UI', 'DejaVu Sans', 'Liberation Sans', sans-serif",
+}
+
+THEMES: dict[str, dict[str, str]] = {
+    "Matrix": _MATRIX,
+    "Scuro":  _SCURO,
+    "Chiaro": _CHIARO,
+}
+
+_RISK_COLORS: dict[str, dict[str, str]] = {
+    "Matrix": {
+        "none":     "#c8ffc8",
+        "low":      "#c8ffc8",
+        "medium":   "#ffcc00",
+        "high":     "#ff6060",
+        "critical": "#ff2222",
+    },
+    "Scuro": {
+        "none":     "#c0c4d8",
+        "low":      "#c0c4d8",
+        "medium":   "#ffd060",
+        "high":     "#ff7070",
+        "critical": "#ff3535",
+    },
+    "Chiaro": {
+        "none":     "#1e2232",
+        "low":      "#1e2232",
+        "medium":   "#a06000",
+        "high":     "#c02000",
+        "critical": "#8a0000",
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Theme state
+# ---------------------------------------------------------------------------
+
+_current_theme_name: str = "Matrix"
+
+
+def set_current_theme(name: str) -> None:
+    global _current_theme_name
+    if name not in THEMES:
+        raise ValueError(f"Unknown theme: {name!r}")
+    _current_theme_name = name
+
+
+def get_current_theme_name() -> str:
+    return _current_theme_name
+
+
+def get_current_colors() -> dict[str, str]:
+    return THEMES[_current_theme_name]
+
+
+def get_current_risk_colors() -> dict[str, str]:
+    return _RISK_COLORS.get(_current_theme_name, _RISK_COLORS["Matrix"])
+
+
+# ---------------------------------------------------------------------------
+# Stylesheet builder
+# ---------------------------------------------------------------------------
+
+def _build_stylesheet(c: dict[str, str]) -> str:
+    return f"""
 QMainWindow, QDialog, QWidget {{
-    background-color: {BG_DARK};
-    color: {FG_NORMAL};
-    font-family: 'Courier New', Courier, monospace;
+    background-color: {c['bg_dark']};
+    color: {c['fg_normal']};
+    font-family: {c['font_family']};
     font-size: 13px;
 }}
 QLabel {{
-    color: {FG_DIM};
+    color: {c['fg_dim']};
     background: transparent;
 }}
 QGroupBox {{
-    color: {FG_ACCENT};
-    border: 1px solid {BORDER_COLOR};
-    margin-top: 10px;
-    padding-top: 4px;
+    color: {c['fg_accent']};
+    border: 1px solid {c['border']};
+    border-radius: 5px;
+    margin-top: 16px;
+    padding: 10px 6px 8px 6px;
 }}
 QGroupBox::title {{
-    color: {FG_ACCENT};
+    color: {c['fg_accent']};
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 8px;
-    padding: 0 4px;
+    left: 10px;
+    padding: 2px 6px;
+    background-color: {c['bg_dark']};
 }}
 QLineEdit, QSpinBox {{
-    background-color: {BG_PANEL};
-    color: {FG_BRIGHT};
-    border: 1px solid {BORDER_COLOR};
-    padding: 3px 6px;
-    selection-background-color: #1a4d1a;
-    selection-color: {FG_BRIGHT};
+    background-color: {c['bg_panel']};
+    color: {c['fg_bright']};
+    border: 1px solid {c['border']};
+    border-radius: 4px;
+    padding: 5px 8px;
+    selection-background-color: {c['sel_bg']};
+    selection-color: {c['sel_fg']};
+    min-height: 22px;
+}}
+QLineEdit:focus, QSpinBox:focus {{
+    border-color: {c['fg_accent']};
+}}
+QLineEdit:hover, QSpinBox:hover {{
+    border-color: {c['fg_accent']};
 }}
 QSpinBox::up-button, QSpinBox::down-button {{
-    background-color: {BG_PANEL};
-    border: 1px solid {BORDER_COLOR};
-    width: 16px;
+    background-color: {c['bg_panel']};
+    border: 1px solid {c['border']};
+    width: 18px;
 }}
 QPushButton {{
-    background-color: {BG_PANEL};
-    color: {FG_ACCENT};
-    border: 1px solid {BORDER_COLOR};
-    padding: 5px 14px;
-    min-width: 70px;
+    background-color: {c['bg_panel']};
+    color: {c['fg_accent']};
+    border: 1px solid {c['border']};
+    border-radius: 4px;
+    padding: 6px 18px;
+    min-width: 80px;
+    min-height: 28px;
 }}
 QPushButton:hover {{
-    background-color: #1a3d1a;
-    border-color: {FG_ACCENT};
+    background-color: {c['btn_hover']};
+    border-color: {c['fg_accent']};
 }}
 QPushButton:pressed {{
-    background-color: {BG_TABLE_HEADER};
+    background-color: {c['btn_pressed']};
 }}
 QPushButton:disabled {{
-    color: #2a4a2a;
-    border-color: #1a2b1a;
+    color: {c['btn_disabled_fg']};
+    border-color: {c['btn_disabled_brd']};
 }}
 QTextEdit {{
-    background-color: {BG_PANEL};
-    color: {FG_DIM};
-    border: 1px solid {BORDER_COLOR};
+    background-color: {c['bg_panel']};
+    color: {c['fg_dim']};
+    border: 1px solid {c['border']};
+    border-radius: 4px;
     font-family: 'Courier New', Courier, monospace;
     font-size: 12px;
+    padding: 4px;
 }}
 QTableWidget {{
-    background-color: {BG_PANEL};
-    color: {FG_NORMAL};
-    border: 1px solid {BORDER_COLOR};
-    gridline-color: #0d1a0d;
-    selection-background-color: #1a4d1a;
-    selection-color: {FG_BRIGHT};
-    alternate-background-color: #0b160b;
+    background-color: {c['bg_panel']};
+    color: {c['fg_normal']};
+    border: 1px solid {c['border']};
+    border-radius: 0px;
+    gridline-color: {c['border']};
+    selection-background-color: {c['sel_bg']};
+    selection-color: {c['sel_fg']};
+    alternate-background-color: {c['alt_row']};
+}}
+QTableWidget::item {{
+    padding: 5px 10px;
 }}
 QTableWidget::item:selected {{
-    background-color: #1a4d1a;
-    color: {FG_BRIGHT};
+    background-color: {c['sel_bg']};
+    color: {c['sel_fg']};
 }}
 QHeaderView::section {{
-    background-color: {BG_TABLE_HEADER};
-    color: {FG_ACCENT};
+    background-color: {c['bg_table_header']};
+    color: {c['fg_accent']};
     border: none;
-    border-right: 1px solid {BORDER_COLOR};
-    border-bottom: 1px solid {BORDER_COLOR};
-    padding: 4px 8px;
+    border-right: 1px solid {c['border']};
+    border-bottom: 2px solid {c['border']};
+    padding: 7px 10px;
     font-weight: bold;
     font-size: 12px;
 }}
 QTabWidget::pane {{
-    border: 1px solid {BORDER_COLOR};
-    background-color: {BG_PANEL};
+    border: 1px solid {c['border']};
+    background-color: {c['bg_panel']};
 }}
 QTabBar::tab {{
-    background-color: {BG_PANEL};
-    color: {FG_DIM};
-    border: 1px solid {BORDER_COLOR};
+    background-color: {c['bg_panel']};
+    color: {c['fg_dim']};
+    border: 1px solid {c['border']};
     border-bottom: none;
-    padding: 5px 16px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 7px 20px;
     margin-right: 2px;
 }}
 QTabBar::tab:selected {{
-    background-color: {BG_TABLE_HEADER};
-    color: {FG_BRIGHT};
+    background-color: {c['bg_table_header']};
+    color: {c['fg_bright']};
 }}
 QTabBar::tab:hover:!selected {{
-    background-color: #1a3d1a;
-    color: {FG_NORMAL};
+    background-color: {c['btn_hover']};
+    color: {c['fg_normal']};
 }}
 QStatusBar {{
-    background-color: {BG_PANEL};
-    color: {FG_DIM};
-    border-top: 1px solid {BORDER_COLOR};
+    background-color: {c['bg_panel']};
+    color: {c['fg_dim']};
+    border-top: 1px solid {c['border']};
     font-size: 12px;
+    padding: 2px 6px;
+}}
+QMenuBar {{
+    background-color: {c['bg_dark']};
+    color: {c['fg_normal']};
+    border-bottom: 1px solid {c['border']};
+    padding: 2px 4px;
+    spacing: 2px;
+}}
+QMenuBar::item {{
+    background: transparent;
+    padding: 5px 12px;
+    border-radius: 3px;
+}}
+QMenuBar::item:selected {{
+    background-color: {c['btn_hover']};
+    color: {c['fg_bright']};
+}}
+QMenuBar::item:pressed {{
+    background-color: {c['btn_pressed']};
+}}
+QMenu {{
+    background-color: {c['bg_panel']};
+    color: {c['fg_normal']};
+    border: 1px solid {c['border']};
+    padding: 4px 0;
+}}
+QMenu::item {{
+    padding: 7px 28px 7px 18px;
+}}
+QMenu::item:selected {{
+    background-color: {c['sel_bg']};
+    color: {c['sel_fg']};
+}}
+QMenu::separator {{
+    height: 1px;
+    background: {c['border']};
+    margin: 4px 8px;
+}}
+QMenu::indicator {{
+    width: 16px;
+    height: 16px;
+    margin-left: 2px;
 }}
 QScrollBar:vertical {{
-    background: {BG_PANEL};
+    background: {c['bg_panel']};
     width: 10px;
     border: none;
 }}
 QScrollBar::handle:vertical {{
-    background: {BORDER_COLOR};
-    min-height: 20px;
-    border-radius: 3px;
+    background: {c['scrollbar_handle']};
+    min-height: 24px;
+    border-radius: 4px;
 }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
     height: 0;
 }}
 QScrollBar:horizontal {{
-    background: {BG_PANEL};
+    background: {c['bg_panel']};
     height: 10px;
     border: none;
 }}
 QScrollBar::handle:horizontal {{
-    background: {BORDER_COLOR};
-    min-width: 20px;
-    border-radius: 3px;
+    background: {c['scrollbar_handle']};
+    min-width: 24px;
+    border-radius: 4px;
 }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
     width: 0;
 }}
 QSplitter::handle {{
-    background-color: {BORDER_COLOR};
-    height: 3px;
+    background-color: {c['border']};
+}}
+QSplitter::handle:vertical {{
+    height: 4px;
+}}
+QSplitter::handle:horizontal {{
+    width: 4px;
+}}
+QDialogButtonBox QPushButton {{
+    min-width: 90px;
 }}
 """
+
+
+def get_stylesheet(theme_name: str | None = None) -> str:
+    name = theme_name or _current_theme_name
+    return _build_stylesheet(THEMES[name])
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible module-level constants (Matrix theme)
+# ---------------------------------------------------------------------------
+
+BG_DARK           = _MATRIX["bg_dark"]
+BG_PANEL          = _MATRIX["bg_panel"]
+BG_TABLE_HEADER   = _MATRIX["bg_table_header"]
+FG_BRIGHT         = _MATRIX["fg_bright"]
+FG_NORMAL         = _MATRIX["fg_normal"]
+FG_DIM            = _MATRIX["fg_dim"]
+FG_ACCENT         = _MATRIX["fg_accent"]
+BORDER_COLOR      = _MATRIX["border"]
+
+RISK_COLORS: dict[str, str] = _RISK_COLORS["Matrix"]
+
+STYLESHEET: str = _build_stylesheet(_MATRIX)
