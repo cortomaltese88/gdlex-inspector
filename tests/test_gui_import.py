@@ -1,6 +1,7 @@
 """Tests for GUI module import safety and CLI gui command."""
 
 import importlib
+import os
 import subprocess
 import sys
 import unittest
@@ -185,6 +186,15 @@ class TestGuiThemes(unittest.TestCase):
         ss = get_stylesheet("Matrix")
         self.assertIn("QProgressBar", ss)
 
+    def test_progress_labels_are_styled_in_all_themes(self):
+        from gdlex_inspector.gui_theme import THEMES, get_stylesheet
+        for name, colors in THEMES.items():
+            ss = get_stylesheet(name)
+            self.assertIn("QLabel#ScanStatusLabel", ss)
+            self.assertIn(f"color: {colors['fg_accent']}", ss)
+            self.assertIn("QLabel#ScanSummaryLabel", ss)
+            self.assertIn(f"color: {colors['fg_normal']}", ss)
+
     def test_stylesheets_have_distinct_primary_action(self):
         from gdlex_inspector.gui_theme import get_stylesheet
         for name in ("Matrix", "Scuro", "Chiaro"):
@@ -219,6 +229,56 @@ class TestGuiThemes(unittest.TestCase):
             ss = get_stylesheet(name)
             self.assertIn("background-color", ss)
             self.assertGreater(len(ss), 200)
+
+
+class TestProgressStatusWidgets(unittest.TestCase):
+    """The graphical bar, status text, and scan summary stay separate."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from gdlex_inspector.gui import _PYSIDE6_AVAILABLE
+        if not _PYSIDE6_AVAILABLE:
+            raise unittest.SkipTest("PySide6 not available")
+        from gdlex_inspector.gui import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        from gdlex_inspector.gui import MainWindow
+        self.window = MainWindow()
+
+    def tearDown(self):
+        self.window.deleteLater()
+
+    def test_progress_bar_never_contains_status_text(self):
+        from gdlex_inspector.models import ScanResult
+
+        self.assertFalse(self.window._progress_bar.isTextVisible())
+
+        self.window._set_scan_running(True)
+        self.assertEqual(self.window._scan_status_label.text(), "Scansione in corso…")
+        self.assertEqual(self.window._scan_summary_label.text(), "")
+        self.assertFalse(self.window._progress_bar.isTextVisible())
+
+        result = ScanResult(
+            root_path="/tmp/test",
+            total_files=357,
+            total_dirs=17,
+            total_size=4512 * 1024 // 10,
+        )
+        self.window._on_scan_done(result)
+        self.assertEqual(self.window._scan_status_label.text(), "Completata")
+        self.assertEqual(
+            self.window._scan_summary_label.text(),
+            "357 file  17 dir  451.2 KiB",
+        )
+        self.assertEqual(self.window._progress_bar.value(), 100)
+        self.assertFalse(self.window._progress_bar.isTextVisible())
+
+        self.window._on_scan_error("test")
+        self.assertEqual(self.window._scan_status_label.text(), "Errore")
+        self.assertEqual(self.window._scan_summary_label.text(), "")
+        self.assertFalse(self.window._progress_bar.isTextVisible())
 
 
 class TestDigitalRainHelpers(unittest.TestCase):

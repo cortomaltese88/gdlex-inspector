@@ -503,15 +503,22 @@ if _PYSIDE6_AVAILABLE:
             layout.setContentsMargins(0, 2, 0, 2)
             layout.setSpacing(10)
             self._scan_status_label = QLabel("Pronto.")
-            self._scan_status_label.setFixedWidth(180)
+            self._scan_status_label.setObjectName("ScanStatusLabel")
+            self._scan_status_label.setFixedWidth(150)
             layout.addWidget(self._scan_status_label)
             self._progress_bar = QProgressBar()
             self._progress_bar.setRange(0, 100)
             self._progress_bar.setValue(0)
-            self._progress_bar.setTextVisible(True)
-            self._progress_bar.setFormat("")
+            self._progress_bar.setTextVisible(False)
             self._progress_bar.setMinimumHeight(18)
             layout.addWidget(self._progress_bar, 1)
+            self._scan_summary_label = QLabel("")
+            self._scan_summary_label.setObjectName("ScanSummaryLabel")
+            self._scan_summary_label.setMinimumWidth(270)
+            self._scan_summary_label.setAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
+            layout.addWidget(self._scan_summary_label)
             return widget
 
         def _build_log_panel(self) -> QWidget:
@@ -735,26 +742,35 @@ if _PYSIDE6_AVAILABLE:
                 btn.setEnabled(False)
             if running:
                 self._progress_bar.setRange(0, 0)
-                self._progress_bar.setFormat("")
                 self._scan_status_label.setText("Scansione in corso…")
+                self._scan_summary_label.clear()
                 self._statusbar.showMessage("Scansione in corso…")
                 self._files_table.setRowCount(0)
                 self._dirs_table.setRowCount(0)
                 self._cats_table.setRowCount(0)
                 self._charts_tab.set_data(None)
 
+        def _set_progress_error(self) -> None:
+            self._progress_bar.setRange(0, 100)
+            self._progress_bar.setValue(0)
+            self._scan_status_label.setText("Errore")
+            self._scan_summary_label.clear()
+
         def _start_scan(self) -> None:
             path = self._path_edit.text().strip()
             if not path:
                 self._log_msg("[ERRORE] Nessun percorso specificato.")
+                self._set_progress_error()
                 self._statusbar.showMessage("Errore: percorso mancante.")
                 return
             if not os.path.exists(path):
                 self._log_msg(f"[ERRORE] Percorso inesistente: {path}")
+                self._set_progress_error()
                 self._statusbar.showMessage("Errore: percorso inesistente.")
                 return
             if not os.path.isdir(path):
                 self._log_msg(f"[ERRORE] Non è una cartella: {path}")
+                self._set_progress_error()
                 self._statusbar.showMessage("Errore: non è una cartella.")
                 return
 
@@ -765,6 +781,7 @@ if _PYSIDE6_AVAILABLE:
                     parse_size(min_size_str)
                 except ValueError as exc:
                     self._log_msg(f"[ERRORE] Min size non valida: {exc}")
+                    self._set_progress_error()
                     self._statusbar.showMessage("Errore: min size non valida.")
                     return
 
@@ -806,8 +823,8 @@ if _PYSIDE6_AVAILABLE:
             )
             self._progress_bar.setRange(0, 100)
             self._progress_bar.setValue(100)
-            self._progress_bar.setFormat("Completata")
-            self._scan_status_label.setText(
+            self._scan_status_label.setText("Completata")
+            self._scan_summary_label.setText(
                 f"{result.total_files} file  {result.total_dirs} dir  {_fmt_size(result.total_size)}"
             )
             self._statusbar.showMessage(summary)
@@ -818,10 +835,7 @@ if _PYSIDE6_AVAILABLE:
 
         def _on_scan_error(self, msg: str) -> None:
             self._log_msg(f"[ERRORE] {msg}")
-            self._progress_bar.setRange(0, 100)
-            self._progress_bar.setValue(0)
-            self._progress_bar.setFormat("Errore")
-            self._scan_status_label.setText("Errore")
+            self._set_progress_error()
             self._statusbar.showMessage(f"Errore durante la scansione: {msg}")
             self._scan_btn.setEnabled(True)
             self._result = None

@@ -284,6 +284,13 @@ QProgressBar::chunk {{
     background-color: {c['bar_fill']};
     border-radius: 4px;
 }}
+QLabel#ScanStatusLabel {{
+    color: {c['fg_accent']};
+    font-weight: bold;
+}}
+QLabel#ScanSummaryLabel {{
+    color: {c['fg_normal']};
+}}
 QLabel#LogTitle {{
     color: {c['fg_accent']};
     font-weight: bold;
