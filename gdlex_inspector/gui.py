@@ -7,14 +7,15 @@ Requires PySide6: pip install PySide6
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 
 from . import gui_theme
 
 try:
-    from PySide6.QtCore import Qt, QThread, Signal
-    from PySide6.QtGui import QColor, QIcon
+    from PySide6.QtCore import Qt, QSettings, QThread, Signal
+    from PySide6.QtGui import QAction, QColor, QIcon
     from PySide6.QtWidgets import (
         QAbstractItemView,
         QApplication,
@@ -25,6 +26,8 @@ try:
         QLabel,
         QLineEdit,
         QMainWindow,
+        QMenu,
+        QMessageBox,
         QPushButton,
         QSpinBox,
         QSplitter,
@@ -38,6 +41,10 @@ try:
     _PYSIDE6_AVAILABLE = True
 except ImportError:
     _PYSIDE6_AVAILABLE = False
+
+
+_SETTINGS_ORG = "GDLex"
+_SETTINGS_APP = "Inspector"
 
 
 if _PYSIDE6_AVAILABLE:
@@ -112,6 +119,9 @@ if _PYSIDE6_AVAILABLE:
 
             self._statusbar = self.statusBar()
             self._statusbar.showMessage("Pronto.")
+
+            self._connect_signals()
+            self._load_settings(initial_path)
 
         def _build_path_group(self, initial_path: str) -> QGroupBox:
             group = QGroupBox("Percorso da analizzare")
@@ -225,6 +235,48 @@ if _PYSIDE6_AVAILABLE:
             hh.setStretchLastSection(False)
             return table
 
+        def _connect_signals(self) -> None:
+            for table in (self._files_table, self._dirs_table):
+                table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            self._files_table.customContextMenuRequested.connect(
+                lambda pos: self._show_context_menu(self._files_table, pos)
+            )
+            self._dirs_table.customContextMenuRequested.connect(
+                lambda pos: self._show_context_menu(self._dirs_table, pos)
+            )
+            self._files_table.itemSelectionChanged.connect(self._update_open_btn)
+            self._dirs_table.itemSelectionChanged.connect(self._update_open_btn)
+            self._tab_widget.currentChanged.connect(lambda _: self._update_open_btn())
+
+        # ------------------------------------------------------------------
+        # Settings persistence
+        # ------------------------------------------------------------------
+
+        def _load_settings(self, initial_path: str) -> None:
+            s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+            path = initial_path or s.value("last_path", "")
+            self._path_edit.setText(path)
+            try:
+                self._top_spin.setValue(int(s.value("top_n", 10)))
+            except (TypeError, ValueError):
+                pass
+            self._min_size_edit.setText(s.value("min_size", "") or "")
+            try:
+                self._depth_spin.setValue(int(s.value("max_depth", 0)))
+            except (TypeError, ValueError):
+                pass
+
+        def _save_settings(self) -> None:
+            s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+            s.setValue("last_path", self._path_edit.text().strip())
+            s.setValue("top_n", self._top_spin.value())
+            s.setValue("min_size", self._min_size_edit.text().strip())
+            s.setValue("max_depth", self._depth_spin.value())
+
+        def closeEvent(self, event) -> None:
+            self._save_settings()
+            super().closeEvent(event)
+
         # ------------------------------------------------------------------
         # Scan logic
         # ------------------------------------------------------------------
@@ -242,8 +294,7 @@ if _PYSIDE6_AVAILABLE:
 
         def _set_scan_running(self, running: bool) -> None:
             self._scan_btn.setEnabled(not running)
-            export_btns = (self._html_btn, self._json_btn, self._csv_btn, self._open_btn)
-            for btn in export_btns:
+            for btn in (self._html_btn, self._json_btn, self._csv_btn, self._open_btn):
                 btn.setEnabled(False)
             if running:
                 self._statusbar.showMessage("Scansione in corso...")
@@ -266,11 +317,27 @@ if _PYSIDE6_AVAILABLE:
                 self._statusbar.showMessage("Errore: non è una cartella.")
                 return
 
+            min_size_str = self._min_size_edit.text().strip()
+            if min_size_str:
+                from .scanner import parse_size
+                try:
+                    parse_size(min_size_str)
+                except ValueError as exc:
+                    self._log_msg(f"[ERRORE] Min size non valida: {exc}")
+                    self._statusbar.showMessage("Errore: min size non valida.")
+                    return
+
+            self._log_msg(
+                f"Scansione avviata — percorso: {path} | "
+                f"top {self._top_spin.value()} | "
+                f"min size: {min_size_str or '—'} | "
+                f"max depth: {self._depth_spin.value() or '∞'}"
+            )
             self._set_scan_running(True)
             self._worker = ScanWorker(
                 path=path,
                 top_n=self._top_spin.value(),
-                min_size=self._min_size_edit.text(),
+                min_size=min_size_str,
                 max_depth=self._depth_spin.value(),
             )
             self._worker.log.connect(self._log_msg)
@@ -283,7 +350,7 @@ if _PYSIDE6_AVAILABLE:
             self._result = result
             self._populate_tables(result)
 
-            self._log_msg(f"Scansione completata.")
+            self._log_msg("Scansione completata.")
             self._log_msg(f"  Percorso: {result.root_path}")
             self._log_msg(f"  Dimensione totale: {_fmt_size(result.total_size)}")
             self._log_msg(f"  File: {result.total_files}  Cartelle: {result.total_dirs}")
@@ -297,8 +364,9 @@ if _PYSIDE6_AVAILABLE:
             )
             self._statusbar.showMessage(summary)
             self._scan_btn.setEnabled(True)
-            for btn in (self._html_btn, self._json_btn, self._csv_btn, self._open_btn):
+            for btn in (self._html_btn, self._json_btn, self._csv_btn):
                 btn.setEnabled(True)
+            self._update_open_btn()
 
         def _on_scan_error(self, msg: str) -> None:
             self._log_msg(f"[ERRORE] {msg}")
@@ -354,8 +422,44 @@ if _PYSIDE6_AVAILABLE:
                 table.setItem(row, col, item)
 
         # ------------------------------------------------------------------
+        # Context menu
+        # ------------------------------------------------------------------
+
+        def _show_context_menu(self, table: QTableWidget, pos) -> None:
+            row = table.rowAt(pos.y())
+            if row < 0:
+                return
+            path_item = table.item(row, 1)
+            if path_item is None:
+                return
+            path = path_item.text()
+            is_file = table is self._files_table
+
+            menu = QMenu(self)
+            open_action = QAction("Apri percorso", self)
+            copy_action = QAction("Copia percorso", self)
+            open_action.triggered.connect(lambda: self._open_path_in_fm(path, is_file=is_file))
+            copy_action.triggered.connect(lambda: QApplication.clipboard().setText(path))
+            menu.addAction(open_action)
+            menu.addAction(copy_action)
+            menu.exec(table.viewport().mapToGlobal(pos))
+
+        # ------------------------------------------------------------------
         # Open path
         # ------------------------------------------------------------------
+
+        def _update_open_btn(self) -> None:
+            if self._result is None:
+                self._open_btn.setEnabled(False)
+                return
+            idx = self._tab_widget.currentIndex()
+            if idx == 0:
+                enabled = self._files_table.currentRow() >= 0
+            elif idx == 1:
+                enabled = self._dirs_table.currentRow() >= 0
+            else:
+                enabled = False
+            self._open_btn.setEnabled(enabled)
 
         def _open_table_item(self, item: QTableWidgetItem) -> None:
             table = item.tableWidget()
@@ -413,10 +517,15 @@ if _PYSIDE6_AVAILABLE:
                 return
             from .report import to_html, to_json, to_csv
 
+            basename = re.sub(r"[^\w]", "_", os.path.basename(
+                self._result.root_path.rstrip("/\\")
+            )) or "report"
+            default_name = os.path.expanduser(f"~/gdlex_{basename}.{ext}")
+
             path, _ = QFileDialog.getSaveFileName(
                 self,
                 f"Salva report {fmt}",
-                os.path.expanduser(f"~/gdlex_report.{ext}"),
+                default_name,
                 f"{fmt} (*.{ext})",
             )
             if not path:
@@ -437,7 +546,10 @@ if _PYSIDE6_AVAILABLE:
                 self._log_msg(f"Report {fmt} salvato: {path}")
                 self._statusbar.showMessage(f"Report {fmt} salvato: {path}")
             except Exception as exc:
-                self._log_msg(f"[ERRORE] Esportazione {fmt} fallita: {exc}")
+                msg = str(exc)
+                self._log_msg(f"[ERRORE] Esportazione {fmt} fallita: {msg}")
+                self._statusbar.showMessage(f"Errore export {fmt}: {msg}")
+                QMessageBox.warning(self, f"Errore esportazione {fmt}", msg)
 
 
 # ---------------------------------------------------------------------------
