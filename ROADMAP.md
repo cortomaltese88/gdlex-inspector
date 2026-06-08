@@ -31,17 +31,20 @@
 
 ## Fase 2 — GUI Matrix
 
-- [ ] GUI PySide6 con tema scuro Matrix coerente con GD LEX
-- [ ] Selezione percorso con dialogo
+> **Step 2A completato (sperimentale)** — GUI minimale funzionale con tema Matrix.
+
+- [x] GUI PySide6 con tema scuro Matrix coerente con GD LEX *(Step 2A)*
+- [x] Selezione percorso con dialogo *(Step 2A)*
 - [ ] Profili scansione rapida
-- [ ] Tabelle risultati interattive
-- [ ] Doppio clic / apri percorso
+- [x] Tabelle risultati interattive (Top file, Top cartelle, Categorie) *(Step 2A)*
+- [x] Doppio clic / apri percorso *(Step 2A)*
 - [ ] Menu contestuale copia percorso
-- [ ] Status bar
-- [ ] Barra progresso
-- [ ] Scansione in thread separato (non blocca UI)
+- [x] Status bar *(Step 2A)*
+- [ ] Barra progresso (indicatore testuale attivo in Step 2A)
+- [x] Scansione in thread separato (non blocca UI) *(Step 2A)*
 - [ ] Dialog informazioni
-- [ ] Icona applicazione
+- [x] Icona applicazione SVG *(Step 2A)*
+- [x] Export HTML/JSON/CSV dalla GUI *(Step 2A)*
 
 ---
 

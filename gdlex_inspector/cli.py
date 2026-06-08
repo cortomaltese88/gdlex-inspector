@@ -56,6 +56,11 @@ def _print_result(result, top_n: int) -> None:
     print(f"  {READONLY_NOTICE}")
 
 
+def cmd_gui(args: argparse.Namespace) -> int:
+    from .gui import launch_gui
+    return launch_gui(initial_path=getattr(args, "path", ""))
+
+
 def cmd_version(args: argparse.Namespace) -> int:
     print(f"gdlex-inspector {__version__}")
     return 0
@@ -133,6 +138,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("version", help="Print version and exit.")
 
+    gui_p = sub.add_parser("gui", help="Launch the graphical interface (requires PySide6).")
+    gui_p.add_argument(
+        "--path", default="", metavar="DIR",
+        help="Pre-fill the path field with this directory.",
+    )
+
     scan_p = sub.add_parser("scan", help="Scan a directory and report disk usage.")
     scan_p.add_argument("path", help="Directory to scan.")
     scan_p.add_argument("--top", type=int, default=10, metavar="N",
@@ -166,6 +177,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_version(args)
     if args.command == "scan":
         return cmd_scan(args)
+    if args.command == "gui":
+        return cmd_gui(args)
 
     parser.print_help()
     return 0

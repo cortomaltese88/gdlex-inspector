@@ -165,10 +165,50 @@ top cartelle), senza JavaScript obbligatorio né dipendenze esterne.
 
 ---
 
+## GUI (sperimentale — Step 2A)
+
+> **Stato: sperimentale.** La GUI è funzionale ma in fase di sviluppo attivo.
+> Richiede un ambiente grafico (X11/Wayland). Non funziona in ambienti headless.
+
+### Installazione dipendenza GUI
+
+```bash
+pip install PySide6
+# oppure tramite extra opzionale:
+pip install 'gdlex-inspector[gui]'
+```
+
+### Avvio GUI
+
+```bash
+python3 -m gdlex_inspector gui
+
+# Con percorso pre-compilato:
+python3 -m gdlex_inspector gui --path /percorso/da/analizzare
+```
+
+### Funzionalità GUI
+
+- Tema scuro Matrix (coerente con i report HTML)
+- Selezione percorso tramite dialogo cartella
+- Opzioni: Top N, Min size, Max depth
+- Scansione in thread separato (UI non bloccata durante la scansione)
+- Tabelle interattive: Top file, Top cartelle, Categorie
+- Doppio clic su riga per aprire nel file manager
+- Pulsante "Apri percorso" per la riga selezionata
+- Esportazione report: HTML, JSON, CSV
+- Area log con messaggi di stato in tempo reale
+- Icona SVG dell'applicazione
+
+Se PySide6 non è installato e si tenta di avviare la GUI, viene mostrato un
+messaggio di errore chiaro. La CLI continua a funzionare normalmente senza PySide6.
+
+---
+
 ## Limiti della prima versione (v0.1.0)
 
 - Solo scanner Python interno (nessun backend esterno gdu/dust/duf).
-- Nessuna GUI (prevista in Fase 2 — PySide6/Matrix).
+- GUI sperimentale disponibile (Fase 2 Step 2A — PySide6/Matrix).
 - Nessuna copia backup PST reale (predisposta, non implementata — Fase 4).
 - Nessuna connessione SSH reale (predisposta, non implementata — Fase 5).
 - Nessun Wake-on-LAN GUI (solo funzioni utility — Fase 5).
