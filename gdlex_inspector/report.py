@@ -1,7 +1,9 @@
-"""Report generation (JSON and HTML) for gdlex-inspector."""
+"""Report generation (JSON, HTML, CSV) for gdlex-inspector."""
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 from datetime import datetime
@@ -92,6 +94,43 @@ def to_json(result: ScanResult) -> str:
         "issues": [{"path": i.path, "error": i.error} for i in result.issues],
     }
     return json.dumps(data, indent=2, ensure_ascii=False)
+
+
+def to_csv(result: ScanResult) -> str:
+    """Serialize a ScanResult to a multi-section CSV string (stdlib csv only)."""
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+
+    w.writerow(["SECTION", "top_files"])
+    w.writerow(["rank", "path", "size_bytes", "size_human", "category", "risk_level", "risk_message"])
+    for i, f in enumerate(result.top_files, 1):
+        w.writerow([i, f.path, f.size, _fmt_size(f.size), f.category, f.risk_level, f.risk_message])
+    w.writerow([])
+
+    w.writerow(["SECTION", "top_dirs"])
+    w.writerow(["rank", "path", "size_bytes", "size_human", "file_count", "category", "risk_level"])
+    for i, d in enumerate(result.top_dirs, 1):
+        w.writerow([i, d.path, d.size, _fmt_size(d.size), d.file_count, d.category, d.risk_level])
+    w.writerow([])
+
+    w.writerow(["SECTION", "extensions"])
+    w.writerow(["extension", "total_size_bytes", "total_size_human", "file_count"])
+    for e in result.extensions:
+        w.writerow([e.extension, e.total_size, _fmt_size(e.total_size), e.file_count])
+    w.writerow([])
+
+    w.writerow(["SECTION", "categories"])
+    w.writerow(["category", "total_size_bytes", "total_size_human", "file_count", "risk_level"])
+    for c in result.categories:
+        w.writerow([c.category, c.total_size, _fmt_size(c.total_size), c.file_count, c.risk_level])
+    w.writerow([])
+
+    w.writerow(["SECTION", "issues"])
+    w.writerow(["path", "error"])
+    for iss in result.issues:
+        w.writerow([iss.path, iss.error])
+
+    return buf.getvalue()
 
 
 def to_html(result: ScanResult) -> str:

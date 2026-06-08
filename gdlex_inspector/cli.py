@@ -9,7 +9,7 @@ import sys
 from . import __version__
 from .backend import choose_backend
 from .platform_info import get_platform_summary
-from .report import _fmt_size, to_html, to_json
+from .report import _fmt_size, to_csv, to_html, to_json
 from .scanner import parse_size, scan_directory
 
 
@@ -110,6 +110,12 @@ def cmd_scan(args: argparse.Namespace) -> int:
             f.write(to_html(result))
         print(f"  HTML report saved: {html_path}")
 
+    if args.csv:
+        csv_path = args.csv
+        with open(csv_path, "w", encoding="utf-8", newline="") as f:
+            f.write(to_csv(result))
+        print(f"  CSV report saved: {csv_path}")
+
     return 0
 
 
@@ -139,6 +145,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Export JSON report to this path.")
     scan_p.add_argument("--html", metavar="PATH", default=None,
                         help="Export HTML report to this path.")
+    scan_p.add_argument("--csv", metavar="PATH", default=None,
+                        help="Export CSV report to this path.")
     scan_p.add_argument("--exclude", metavar="PATTERN", action="append",
                         help="Exclude paths matching this glob pattern (repeatable).")
     scan_p.add_argument("--follow-symlinks", action="store_true", default=False,

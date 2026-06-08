@@ -16,15 +16,15 @@ echo "=== gdlex-inspector smoke test ==="
 echo "Project root: $PROJECT_ROOT"
 echo ""
 
-echo "[1/6] --help"
+echo "[1/7] --help"
 $PYTHON -m gdlex_inspector --help > /dev/null
 echo "  OK"
 
-echo "[2/6] version"
+echo "[2/7] version"
 $PYTHON -m gdlex_inspector version
 echo "  OK"
 
-echo "[3/6] scan on temp directory"
+echo "[3/7] scan on temp directory"
 TMPDIR_TEST="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_TEST"' EXIT
 
@@ -39,7 +39,7 @@ $PYTHON -c "open('$TMPDIR_TEST/subdir/big.bin','wb').write(b'z'*102400)"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --top 5
 echo "  OK"
 
-echo "[4/6] export JSON"
+echo "[4/7] export JSON"
 JSON_OUT="$TMPDIR_TEST/report.json"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --json "$JSON_OUT" > /dev/null
 if [[ ! -s "$JSON_OUT" ]]; then
@@ -48,7 +48,7 @@ if [[ ! -s "$JSON_OUT" ]]; then
 fi
 echo "  OK: $JSON_OUT ($(wc -c < "$JSON_OUT") bytes)"
 
-echo "[5/6] export HTML"
+echo "[5/7] export HTML"
 HTML_OUT="$TMPDIR_TEST/report.html"
 $PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --html "$HTML_OUT" > /dev/null
 if [[ ! -s "$HTML_OUT" ]]; then
@@ -57,7 +57,23 @@ if [[ ! -s "$HTML_OUT" ]]; then
 fi
 echo "  OK: $HTML_OUT ($(wc -c < "$HTML_OUT") bytes)"
 
-echo "[6/6] unit tests"
+echo "[6/7] export CSV"
+CSV_OUT="$TMPDIR_TEST/report.csv"
+$PYTHON -m gdlex_inspector scan "$TMPDIR_TEST" --csv "$CSV_OUT" > /dev/null
+if [[ ! -s "$CSV_OUT" ]]; then
+  echo "  FAIL: CSV report missing or empty" >&2
+  exit 1
+fi
+# Verify all five sections are present
+for section in top_files top_dirs extensions categories issues; do
+  if ! grep -q "$section" "$CSV_OUT"; then
+    echo "  FAIL: section '$section' missing from CSV" >&2
+    exit 1
+  fi
+done
+echo "  OK: $CSV_OUT ($(wc -c < "$CSV_OUT") bytes)"
+
+echo "[7/7] unit tests"
 $PYTHON -m unittest discover -s tests -v 2>&1 | tail -5
 echo "  OK"
 

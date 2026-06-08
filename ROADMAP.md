@@ -25,7 +25,7 @@
 - [ ] Gestione permessi negati (non bloccante)
 - [ ] Supporto Linux, Windows, WSL
 - [ ] Filtraggio per data modifica
-- [ ] Export CSV
+- [x] Export CSV
 
 ---
 

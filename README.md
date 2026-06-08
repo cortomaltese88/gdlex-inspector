@@ -85,6 +85,9 @@ python -m gdlex_inspector scan /percorso --top 50 --min-size 100M --max-depth 3
 # Esporta JSON e HTML
 python -m gdlex_inspector scan /percorso --json report.json --html report.html
 
+# Esporta CSV
+python -m gdlex_inspector scan /percorso --csv report.csv
+
 # Escludi pattern
 python -m gdlex_inspector scan /percorso --exclude node_modules --exclude .git
 ```
@@ -135,8 +138,11 @@ python -m gdlex_inspector scan . --json report.json
 # HTML con tema scuro Matrix
 python -m gdlex_inspector scan . --html report.html
 
-# Entrambi
-python -m gdlex_inspector scan . --json report.json --html report.html
+# CSV multi-sezione (top_files, top_dirs, extensions, categories, issues)
+python -m gdlex_inspector scan . --csv report.csv
+
+# Tutti i formati insieme
+python -m gdlex_inspector scan . --json report.json --html report.html --csv report.csv
 ```
 
 ---
@@ -150,6 +156,7 @@ python -m gdlex_inspector scan . --json report.json --html report.html
 | `--max-depth N` | Profondità massima di ricorsione |
 | `--json PATH` | Esporta report JSON |
 | `--html PATH` | Esporta report HTML |
+| `--csv PATH` | Esporta report CSV (sezioni: top_files, top_dirs, extensions, categories, issues) |
 | `--exclude PATTERN` | Escludi pattern glob (ripetibile) |
 | `--follow-symlinks` | Segui symlink (default: disabilitato) |
 

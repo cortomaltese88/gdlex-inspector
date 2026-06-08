@@ -3,7 +3,7 @@
 ## Scanner
 
 - [ ] Aggiungere test per permessi negati (directory non accessibile)
-- [ ] Aggiungere supporto CSV come formato di export
+- [x] Aggiungere supporto CSV come formato di export
 - [ ] Ottimizzare performance su directory con milioni di file
 - [ ] Aggiungere filtraggio per data modifica (`--newer-than`, `--older-than`)
 
