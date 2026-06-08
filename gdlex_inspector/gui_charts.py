@@ -62,7 +62,7 @@ if _PYSIDE6_AVAILABLE:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             w, h = float(self.width()), float(self.height())
 
-            small_font = QFont("Courier New", 9)
+            small_font = QFont("Noto Sans", 9)
             painter.setFont(small_font)
 
             if not self._categories:
@@ -103,7 +103,7 @@ if _PYSIDE6_AVAILABLE:
 
             total = sum(max(0, c.total_size) for c in self._categories)
             inner_rect = QRectF(cx - inner_r, cy - inner_r, inner_r * 2.0, inner_r * 2.0)
-            bold_font = QFont("Courier New", 9, QFont.Weight.Bold)
+            bold_font = QFont("Noto Sans", 9, QFont.Weight.Bold)
             painter.setFont(bold_font)
             painter.setPen(QColor(colors["fg_bright"]))
             painter.drawText(inner_rect, Qt.AlignmentFlag.AlignCenter, _fmt_size(total))
@@ -133,7 +133,7 @@ if _PYSIDE6_AVAILABLE:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             w = float(self.width())
 
-            font = QFont("Courier New", 9)
+            font = QFont("Noto Sans", 9)
             painter.setFont(font)
 
             for i, (cat, pct) in enumerate(zip(self._categories, self._percentages)):
@@ -182,7 +182,7 @@ if _PYSIDE6_AVAILABLE:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             w, h = float(self.width()), float(self.height())
 
-            font = QFont("Courier New", 9)
+            font = QFont("Noto Sans", 9)
             painter.setFont(font)
 
             if not self._dirs:

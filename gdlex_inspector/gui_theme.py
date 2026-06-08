@@ -19,12 +19,12 @@ _MATRIX: dict[str, str] = {
     "bg_panel":          "#0d1a0d",
     "bg_table_header":   "#0d2b0d",
     "fg_bright":         "#00ff41",
-    "fg_normal":         "#c8ffc8",
-    "fg_dim":            "#6af06a",
-    "fg_accent":         "#39ff14",
+    "fg_normal":         "#d0ecd0",
+    "fg_dim":            "#7ec87e",
+    "fg_accent":         "#00cc44",
     "border":            "#1a4d1a",
     "sel_bg":            "#1a4d1a",
-    "sel_fg":            "#00ff41",
+    "sel_fg":            "#e0ffe0",
     "alt_row":           "#0b160b",
     "btn_hover":         "#1a3d1a",
     "btn_pressed":       "#0d2b0d",
@@ -32,7 +32,7 @@ _MATRIX: dict[str, str] = {
     "btn_disabled_brd":  "#1a2b1a",
     "scrollbar_handle":  "#1a4d1a",
     "bar_track":         "#102810",
-    "font_family":       "'Courier New', Courier, monospace",
+    "font_family":       "'Noto Sans', 'DejaVu Sans', sans-serif",
 }
 
 _SCURO: dict[str, str] = {
@@ -85,8 +85,8 @@ THEMES: dict[str, dict[str, str]] = {
 
 _RISK_COLORS: dict[str, dict[str, str]] = {
     "Matrix": {
-        "none":     "#c8ffc8",
-        "low":      "#c8ffc8",
+        "none":     "#d0ecd0",
+        "low":      "#d0ecd0",
         "medium":   "#ffcc00",
         "high":     "#ff6060",
         "critical": "#ff2222",
@@ -187,7 +187,7 @@ QSpinBox::up-button, QSpinBox::down-button {{
 }}
 QPushButton {{
     background-color: {c['bg_panel']};
-    color: {c['fg_accent']};
+    color: {c['fg_normal']};
     border: 1px solid {c['border']};
     border-radius: 4px;
     padding: 6px 18px;
@@ -213,6 +213,25 @@ QTextEdit {{
     font-family: 'Courier New', Courier, monospace;
     font-size: 12px;
     padding: 4px;
+}}
+QProgressBar {{
+    background-color: {c['bar_track']};
+    border: 1px solid {c['border']};
+    border-radius: 4px;
+    color: {c['fg_normal']};
+    text-align: center;
+    font-size: 11px;
+    min-height: 16px;
+}}
+QProgressBar::chunk {{
+    background-color: {c['fg_accent']};
+    border-radius: 3px;
+}}
+QLabel#LogTitle {{
+    color: {c['fg_accent']};
+    font-weight: bold;
+    font-size: 11px;
+    padding: 2px 0;
 }}
 QTableWidget {{
     background-color: {c['bg_panel']};

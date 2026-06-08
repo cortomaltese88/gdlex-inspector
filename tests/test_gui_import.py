@@ -152,6 +152,39 @@ class TestGuiThemes(unittest.TestCase):
         chiaro_bg = "#eef1f6"
         self.assertIn(chiaro_bg, ss)
 
+    def test_matrix_is_first_in_available_themes(self):
+        """Matrix must be the first (default) theme in AVAILABLE_THEMES."""
+        from gdlex_inspector.gui_theme import AVAILABLE_THEMES
+        self.assertEqual(AVAILABLE_THEMES[0], "Matrix")
+
+    def test_matrix_uses_sans_serif_font(self):
+        """Matrix theme must use sans-serif UI font, not monospace."""
+        from gdlex_inspector.gui_theme import THEMES
+        font_family = THEMES["Matrix"]["font_family"]
+        self.assertIn("sans", font_family.lower())
+        self.assertNotIn("monospace", font_family.lower())
+        self.assertNotIn("courier", font_family.lower())
+
+    def test_matrix_stylesheet_log_uses_monospace(self):
+        """QTextEdit in Matrix stylesheet must keep monospace for log readability."""
+        from gdlex_inspector.gui_theme import get_stylesheet
+        ss = get_stylesheet("Matrix")
+        self.assertIn("monospace", ss)
+
+    def test_matrix_stylesheet_has_progressbar(self):
+        """Matrix stylesheet must include QProgressBar styling."""
+        from gdlex_inspector.gui_theme import get_stylesheet
+        ss = get_stylesheet("Matrix")
+        self.assertIn("QProgressBar", ss)
+
+    def test_scuro_and_chiaro_stylesheets_unchanged(self):
+        """Scuro and Chiaro themes must still produce valid stylesheets."""
+        from gdlex_inspector.gui_theme import get_stylesheet
+        for name in ("Scuro", "Chiaro"):
+            ss = get_stylesheet(name)
+            self.assertIn("background-color", ss)
+            self.assertGreater(len(ss), 200)
+
 
 if __name__ == "__main__":
     unittest.main()

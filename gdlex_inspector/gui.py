@@ -41,6 +41,7 @@ try:
         QMainWindow,
         QMenu,
         QMessageBox,
+        QProgressBar,
         QPushButton,
         QSpinBox,
         QSplashScreen,
@@ -336,6 +337,7 @@ if _PYSIDE6_AVAILABLE:
 
             root_layout.addWidget(self._build_path_group(initial_path))
             root_layout.addWidget(self._build_options_group())
+            root_layout.addWidget(self._build_progress_bar())
             root_layout.addWidget(self._build_splitter(), 1)
             root_layout.addLayout(self._build_export_bar())
 
@@ -448,15 +450,61 @@ if _PYSIDE6_AVAILABLE:
             layout.addWidget(self._scan_btn)
             return group
 
-        def _build_splitter(self) -> QSplitter:
-            splitter = QSplitter(Qt.Orientation.Vertical)
+        def _build_progress_bar(self) -> QWidget:
+            widget = QWidget()
+            layout = QHBoxLayout(widget)
+            layout.setContentsMargins(0, 2, 0, 2)
+            layout.setSpacing(10)
+            self._scan_status_label = QLabel("Pronto.")
+            self._scan_status_label.setFixedWidth(180)
+            layout.addWidget(self._scan_status_label)
+            self._progress_bar = QProgressBar()
+            self._progress_bar.setRange(0, 100)
+            self._progress_bar.setValue(0)
+            self._progress_bar.setTextVisible(True)
+            self._progress_bar.setFormat("")
+            self._progress_bar.setMinimumHeight(18)
+            layout.addWidget(self._progress_bar, 1)
+            return widget
+
+        def _build_log_panel(self) -> QWidget:
+            panel = QWidget()
+            vbox = QVBoxLayout(panel)
+            vbox.setContentsMargins(0, 0, 0, 0)
+            vbox.setSpacing(2)
+
+            header = QHBoxLayout()
+            header.setContentsMargins(4, 0, 4, 0)
+            title = QLabel("Log / Debug")
+            title.setObjectName("LogTitle")
+            header.addWidget(title)
+            header.addStretch()
+            clear_btn = QPushButton("Pulisci")
+            clear_btn.setMinimumWidth(0)
+            clear_btn.setFixedHeight(22)
+            clear_btn.setStyleSheet("min-width: 54px; padding: 2px 8px;")
+            clear_btn.clicked.connect(lambda: self._log.clear())
+            copy_btn = QPushButton("Copia log")
+            copy_btn.setMinimumWidth(0)
+            copy_btn.setFixedHeight(22)
+            copy_btn.setStyleSheet("min-width: 72px; padding: 2px 8px;")
+            copy_btn.clicked.connect(self._copy_log)
+            header.addWidget(clear_btn)
+            header.addWidget(copy_btn)
+            vbox.addLayout(header)
 
             self._log = QTextEdit()
             self._log.setReadOnly(True)
-            self._log.setMaximumHeight(150)
-            self._log.setMinimumHeight(70)
+            self._log.setMaximumHeight(140)
+            self._log.setMinimumHeight(60)
             self._log.setPlaceholderText("Il log delle operazioni comparirà qui…")
-            splitter.addWidget(self._log)
+            vbox.addWidget(self._log)
+            return panel
+
+        def _build_splitter(self) -> QSplitter:
+            splitter = QSplitter(Qt.Orientation.Vertical)
+
+            splitter.addWidget(self._build_log_panel())
 
             self._tab_widget = QTabWidget()
             self._files_table = self._make_table(
@@ -624,11 +672,19 @@ if _PYSIDE6_AVAILABLE:
             sb = self._log.verticalScrollBar()
             sb.setValue(sb.maximum())
 
+        def _copy_log(self) -> None:
+            text = self._log.toPlainText()
+            if text:
+                QApplication.clipboard().setText(text)
+
         def _set_scan_running(self, running: bool) -> None:
             self._scan_btn.setEnabled(not running)
             for btn in (self._html_btn, self._json_btn, self._csv_btn, self._open_btn):
                 btn.setEnabled(False)
             if running:
+                self._progress_bar.setRange(0, 0)
+                self._progress_bar.setFormat("")
+                self._scan_status_label.setText("Scansione in corso…")
                 self._statusbar.showMessage("Scansione in corso…")
                 self._files_table.setRowCount(0)
                 self._dirs_table.setRowCount(0)
@@ -696,6 +752,12 @@ if _PYSIDE6_AVAILABLE:
                 f"{result.total_dirs} dir, "
                 f"{_fmt_size(result.total_size)} totale"
             )
+            self._progress_bar.setRange(0, 100)
+            self._progress_bar.setValue(100)
+            self._progress_bar.setFormat("Completata")
+            self._scan_status_label.setText(
+                f"{result.total_files} file  {result.total_dirs} dir  {_fmt_size(result.total_size)}"
+            )
             self._statusbar.showMessage(summary)
             self._scan_btn.setEnabled(True)
             for btn in (self._html_btn, self._json_btn, self._csv_btn):
@@ -704,6 +766,10 @@ if _PYSIDE6_AVAILABLE:
 
         def _on_scan_error(self, msg: str) -> None:
             self._log_msg(f"[ERRORE] {msg}")
+            self._progress_bar.setRange(0, 100)
+            self._progress_bar.setValue(0)
+            self._progress_bar.setFormat("Errore")
+            self._scan_status_label.setText("Errore")
             self._statusbar.showMessage(f"Errore durante la scansione: {msg}")
             self._scan_btn.setEnabled(True)
             self._result = None
