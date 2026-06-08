@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "gdlex-inspector"
+version = "0.1.0"
+description = "Multiplatform disk inspection and prudential reporting tool for GD LEX workflows"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+authors = [
+    { name = "STUDIO GD LEX" }
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+gdlex-inspector = "gdlex_inspector.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gdlex_inspector*"]
+
+[tool.setuptools.package-data]
+gdlex_inspector = ["assets/*.svg"]
