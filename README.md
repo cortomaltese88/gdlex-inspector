@@ -205,6 +205,78 @@ messaggio di errore chiaro. La CLI continua a funzionare normalmente senza PySid
 
 ---
 
+## Integrazione desktop Linux/KDE
+
+> Permette di avviare GD LEX Inspector dal menu applicazioni KDE/GNOME senza
+> usare il terminale. Non richiede privilegi di root.
+
+### Prerequisiti
+
+```bash
+# Installare PySide6 (necessario per la GUI)
+pip install PySide6
+# oppure via extra opzionale:
+pip install 'gdlex-inspector[gui]'
+```
+
+### Installazione editable (necessaria per il comando `gdlex-inspector`)
+
+Se si usa direttamente il repository sorgente (senza pacchetto .deb), installare
+il progetto in modalità editable per rendere disponibile il comando `gdlex-inspector`:
+
+```bash
+cd /home/marco/progetti/gdlex-inspector
+python3 -m pip install -e ".[gui]"
+```
+
+Verificare che il comando sia disponibile:
+
+```bash
+gdlex-inspector --help
+gdlex-inspector gui
+```
+
+In alternativa, senza installazione:
+
+```bash
+python3 -m gdlex_inspector gui
+```
+
+### Installare la voce menu
+
+```bash
+./scripts/install_desktop_entry.sh
+```
+
+Lo script:
+
+- non richiede sudo;
+- copia il desktop file in `~/.local/share/applications/`;
+- copia l'icona SVG in `~/.local/share/icons/hicolor/scalable/apps/`;
+- aggiorna le cache KDE/GTK se i comandi sono disponibili;
+- è idempotente (rieseguibile senza problemi).
+
+### Rimuovere la voce menu
+
+```bash
+./scripts/uninstall_desktop_entry.sh
+```
+
+### Avvio
+
+Dopo l'installazione, GD LEX Inspector compare nel menu applicazioni sotto
+le categorie **Utility / System / FileTools**.
+
+Dalla riga di comando:
+
+```bash
+gdlex-inspector gui
+# oppure
+python3 -m gdlex_inspector gui
+```
+
+---
+
 ## Limiti della prima versione (v0.1.0)
 
 - Solo scanner Python interno (nessun backend esterno gdu/dust/duf).

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=GD LEX Inspector
+Comment=Disk inspection and reporting tool
+Exec=gdlex-inspector gui
+Icon=gdlex-inspector
+Terminal=false
+Type=Application
+Categories=Utility;System;FileTools;
+StartupNotify=true
+Keywords=disk;inspection;report;file;size;
