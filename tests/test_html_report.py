@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from datetime import datetime, timezone
 
 from gdlex_inspector.models import CategorySummary, DirectoryEntry, ScanResult
 from gdlex_inspector.report import (
@@ -82,6 +83,12 @@ class TestHtmlReportCharts(unittest.TestCase):
             "</html>",
         ):
             self.assertIn(section, html)
+
+    def test_missing_scan_timestamp_uses_timezone_aware_utc(self):
+        html = to_html(_make_result())
+        timestamp = html.split("<b>Data scansione:</b> ", 1)[1].split("<br>", 1)[0]
+        parsed = datetime.fromisoformat(timestamp)
+        self.assertEqual(parsed.utcoffset(), timezone.utc.utcoffset(parsed))
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import csv
 import io
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from html import escape
 
 from .models import CategorySummary, DirectoryEntry, ScanResult
@@ -308,7 +308,7 @@ def to_csv(result: ScanResult) -> str:
 
 def to_html(result: ScanResult) -> str:
     """Render a ScanResult to an HTML report with Matrix dark theme."""
-    ts = result.scan_timestamp or datetime.utcnow().isoformat()
+    ts = result.scan_timestamp or datetime.now(timezone.utc).isoformat()
     platform = result.platform_info.get("platform_kind", "unknown")
     hostname = result.platform_info.get("hostname", "unknown")
 
