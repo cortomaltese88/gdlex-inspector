@@ -164,7 +164,6 @@ python -m gdlex_inspector scan . --json report.json --html report.html
 - Nessun Wake-on-LAN GUI (solo funzioni utility — Fase 5).
 - Nessun export PDF/DOCX (previsto in Fase 3).
 - Nessun grafico interattivo (previsto in Fase 3).
-- Calcolo dimensione cartelle: somma ricorsiva file diretti (senza subtree per directory intermedie nella top list — miglioramento previsto).
 
 ---
 

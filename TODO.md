@@ -2,7 +2,6 @@
 
 ## Scanner
 
-- [ ] Migliorare calcolo dimensioni directory (albero completo, non solo file diretti)
 - [ ] Aggiungere test per permessi negati (directory non accessibile)
 - [ ] Aggiungere supporto CSV come formato di export
 - [ ] Ottimizzare performance su directory con milioni di file
