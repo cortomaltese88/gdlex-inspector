@@ -60,6 +60,28 @@ except ImportError:
 
 _SETTINGS_ORG = "GDLex"
 _SETTINGS_APP = "Inspector"
+_DIGITAL_RAIN_GLYPHS = "01アイウエオカキクケコサシスセソ<>/{}[]"
+
+
+def digital_rain_columns(width: int, column_width: int = 18) -> tuple[int, ...]:
+    """Return stable x coordinates for splash rain columns."""
+    if width <= 0 or column_width <= 0:
+        return ()
+    return tuple(range(column_width // 2, width, column_width))
+
+
+def digital_rain_cell(column: int, row: int, frame: int) -> tuple[str, int]:
+    """Return a deterministic glyph and alpha for one animated rain cell."""
+    seed = column * 17 + row * 31 + frame
+    glyph = _DIGITAL_RAIN_GLYPHS[seed % len(_DIGITAL_RAIN_GLYPHS)]
+    trail = (row - (frame // 2 + column * 3)) % 17
+    if trail == 0:
+        alpha = 190
+    elif trail < 5:
+        alpha = 105 - trail * 15
+    else:
+        alpha = 18
+    return glyph, alpha
 
 
 def _get_version() -> str:
@@ -91,6 +113,7 @@ if _PYSIDE6_AVAILABLE:
             pixmap.fill(QColor("#0a0f0a"))
             super().__init__(pixmap, Qt.WindowType.SplashScreen)
             self._progress = 0
+            self._frame = 0
             self._version = _get_version()
             self._render()
             self._timer = QTimer(self)
@@ -99,6 +122,7 @@ if _PYSIDE6_AVAILABLE:
 
         def _tick(self) -> None:
             self._progress = min(100, self._progress + 2)
+            self._frame += 1
             self._render()
             if self._progress >= 100:
                 self._timer.stop()
@@ -109,6 +133,22 @@ if _PYSIDE6_AVAILABLE:
             p = QPainter(pixmap)
             p.setRenderHint(QPainter.RenderHint.Antialiasing)
             w, h = float(self._W), float(self._H)
+
+            # Quiet digital rain background, deterministic to avoid timer jitter.
+            rain_font = QFont("DejaVu Sans Mono", 10)
+            p.setFont(rain_font)
+            for column, x in enumerate(digital_rain_columns(self._W)):
+                phase = (self._frame + column * 5) % 19
+                for row in range(-1, 20):
+                    glyph, alpha = digital_rain_cell(column, row, self._frame)
+                    y = ((row + phase) % 19) * 17 - 4
+                    p.setPen(QColor(0, 255, 65, alpha))
+                    p.drawText(x, y, glyph)
+
+            # A translucent reading panel keeps the identity text crisp.
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QBrush(QColor(5, 13, 7, 218)))
+            p.drawRoundedRect(QRectF(66.0, 20.0, w - 132.0, 210.0), 10.0, 10.0)
 
             # Border
             p.setPen(QPen(QColor("#1a4d1a"), 2))
@@ -444,6 +484,7 @@ if _PYSIDE6_AVAILABLE:
 
             layout.addStretch()
             self._scan_btn = QPushButton("▶  Scansiona")
+            self._scan_btn.setObjectName("PrimaryAction")
             self._scan_btn.setDefault(True)
             self._scan_btn.setMinimumWidth(130)
             self._scan_btn.clicked.connect(self._start_scan)

@@ -82,10 +82,12 @@ class TestGuiThemes(unittest.TestCase):
     def test_theme_colors_have_required_keys(self):
         from gdlex_inspector.gui_theme import THEMES
         required = (
-            "bg_dark", "bg_panel", "bg_table_header",
+            "bg_dark", "bg_panel", "bg_panel_alt", "bg_table_header",
             "fg_bright", "fg_normal", "fg_dim", "fg_accent",
             "border", "sel_bg", "sel_fg", "alt_row",
-            "btn_hover", "btn_pressed", "bar_track",
+            "btn_hover", "btn_pressed", "bar_track", "bar_fill",
+            "chart_bg", "chart_track", "legend_text", "muted_text",
+            "primary_bg", "primary_hover", "primary_pressed",
         )
         for theme_name, colors in THEMES.items():
             for key in required:
@@ -149,7 +151,7 @@ class TestGuiThemes(unittest.TestCase):
         from gdlex_inspector.gui_theme import set_current_theme, get_stylesheet
         set_current_theme("Chiaro")
         ss = get_stylesheet()
-        chiaro_bg = "#eef1f6"
+        chiaro_bg = "#f2f4f3"
         self.assertIn(chiaro_bg, ss)
 
     def test_matrix_is_first_in_available_themes(self):
@@ -177,6 +179,33 @@ class TestGuiThemes(unittest.TestCase):
         ss = get_stylesheet("Matrix")
         self.assertIn("QProgressBar", ss)
 
+    def test_stylesheets_have_distinct_primary_action(self):
+        from gdlex_inspector.gui_theme import get_stylesheet
+        for name in ("Matrix", "Scuro", "Chiaro"):
+            self.assertIn("QPushButton#PrimaryAction", get_stylesheet(name))
+
+    def test_dark_and_light_palettes_are_visually_distinct(self):
+        from gdlex_inspector.gui_theme import THEMES
+        self.assertNotEqual(THEMES["Scuro"]["bg_dark"], THEMES["Matrix"]["bg_dark"])
+        self.assertNotEqual(THEMES["Chiaro"]["fg_accent"], THEMES["Scuro"]["fg_accent"])
+
+    def test_chart_palette_entries_are_nonempty_hex_colors(self):
+        from gdlex_inspector.gui_theme import THEMES
+        keys = ("chart_bg", "chart_track", "bar_fill", "legend_text", "muted_text")
+        for colors in THEMES.values():
+            for key in keys:
+                self.assertRegex(colors[key], r"^#[0-9a-fA-F]{6}$")
+
+    def test_chart_series_are_theme_aware_and_cycle(self):
+        from gdlex_inspector.gui_theme import get_chart_series_color, set_current_theme
+        first_colors = {}
+        for name in ("Matrix", "Scuro", "Chiaro"):
+            set_current_theme(name)
+            first_colors[name] = get_chart_series_color(0)
+            self.assertRegex(first_colors[name], r"^#[0-9a-fA-F]{6}$")
+            self.assertEqual(get_chart_series_color(0), get_chart_series_color(6))
+        self.assertEqual(len(set(first_colors.values())), 3)
+
     def test_scuro_and_chiaro_stylesheets_unchanged(self):
         """Scuro and Chiaro themes must still produce valid stylesheets."""
         from gdlex_inspector.gui_theme import get_stylesheet
@@ -184,6 +213,32 @@ class TestGuiThemes(unittest.TestCase):
             ss = get_stylesheet(name)
             self.assertIn("background-color", ss)
             self.assertGreater(len(ss), 200)
+
+
+class TestDigitalRainHelpers(unittest.TestCase):
+    """Splash animation logic stays testable without rendering."""
+
+    def test_columns_are_stable_and_bounded(self):
+        from gdlex_inspector.gui import digital_rain_columns
+        columns = digital_rain_columns(100, 18)
+        self.assertEqual(columns, digital_rain_columns(100, 18))
+        self.assertTrue(columns)
+        self.assertGreaterEqual(columns[0], 0)
+        self.assertLess(columns[-1], 100)
+
+    def test_invalid_column_dimensions_return_empty(self):
+        from gdlex_inspector.gui import digital_rain_columns
+        self.assertEqual(digital_rain_columns(0), ())
+        self.assertEqual(digital_rain_columns(100, 0), ())
+
+    def test_cells_are_deterministic_and_animated(self):
+        from gdlex_inspector.gui import digital_rain_cell
+        first = digital_rain_cell(2, 4, 3)
+        self.assertEqual(first, digital_rain_cell(2, 4, 3))
+        self.assertNotEqual(first, digital_rain_cell(2, 4, 4))
+        self.assertTrue(first[0])
+        self.assertGreaterEqual(first[1], 0)
+        self.assertLessEqual(first[1], 255)
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ try:
 except ImportError:
     _PYSIDE6_AVAILABLE = False
 
-from .report import _fmt_size, calculate_percentages, category_color
+from .report import _fmt_size, calculate_percentages
 from . import gui_theme
 
 
@@ -66,7 +66,7 @@ if _PYSIDE6_AVAILABLE:
             painter.setFont(small_font)
 
             if not self._categories:
-                painter.setPen(QColor(colors["fg_dim"]))
+                painter.setPen(QColor(colors["muted_text"]))
                 painter.drawText(QRectF(0, 0, w, h), Qt.AlignmentFlag.AlignCenter, "—")
                 return
 
@@ -77,7 +77,7 @@ if _PYSIDE6_AVAILABLE:
             inner_r = outer_r * 0.54
 
             angle = 90.0  # start at 12 o'clock, sweep clockwise
-            for cat, pct in zip(self._categories, self._percentages):
+            for index, (cat, pct) in enumerate(zip(self._categories, self._percentages)):
                 if pct <= 0.0:
                     continue
                 sweep = -(pct / 100.0 * 360.0)
@@ -95,7 +95,7 @@ if _PYSIDE6_AVAILABLE:
                 path.arcTo(inner_rect, angle + sweep, -sweep)
                 path.closeSubpath()
 
-                painter.setBrush(QBrush(QColor(category_color(cat.category))))
+                painter.setBrush(QBrush(QColor(gui_theme.get_chart_series_color(index))))
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawPath(path)
 
@@ -105,7 +105,7 @@ if _PYSIDE6_AVAILABLE:
             inner_rect = QRectF(cx - inner_r, cy - inner_r, inner_r * 2.0, inner_r * 2.0)
             bold_font = QFont("Noto Sans", 9, QFont.Weight.Bold)
             painter.setFont(bold_font)
-            painter.setPen(QColor(colors["fg_bright"]))
+            painter.setPen(QColor(colors["legend_text"]))
             painter.drawText(inner_rect, Qt.AlignmentFlag.AlignCenter, _fmt_size(total))
 
     class _LegendWidget(QWidget):
@@ -139,11 +139,11 @@ if _PYSIDE6_AVAILABLE:
             for i, (cat, pct) in enumerate(zip(self._categories, self._percentages)):
                 y = float(i * self._ROW_H)
                 swatch_y = y + (self._ROW_H - self._SWATCH) / 2.0
-                painter.setBrush(QBrush(QColor(category_color(cat.category))))
+                painter.setBrush(QBrush(QColor(gui_theme.get_chart_series_color(i))))
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(QRectF(6.0, swatch_y, self._SWATCH, self._SWATCH))
 
-                painter.setPen(QColor(colors["fg_normal"]))
+                painter.setPen(QColor(colors["legend_text"]))
                 painter.drawText(
                     QRectF(24.0, y, max(w - 155.0, 40.0), self._ROW_H),
                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
@@ -151,7 +151,7 @@ if _PYSIDE6_AVAILABLE:
                 )
 
                 size_text = f"{_fmt_size(cat.total_size)} ({pct:.1f}%)"
-                painter.setPen(QColor(colors["fg_dim"]))
+                painter.setPen(QColor(colors["muted_text"]))
                 painter.drawText(
                     QRectF(w - 148.0, y, 144.0, self._ROW_H),
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
@@ -186,7 +186,7 @@ if _PYSIDE6_AVAILABLE:
             painter.setFont(font)
 
             if not self._dirs:
-                painter.setPen(QColor(colors["fg_dim"]))
+                painter.setPen(QColor(colors["muted_text"]))
                 painter.drawText(QRectF(0.0, 0.0, w, h), Qt.AlignmentFlag.AlignCenter, "—")
                 return
 
@@ -211,16 +211,16 @@ if _PYSIDE6_AVAILABLE:
                     label,
                 )
 
-                painter.setBrush(QBrush(QColor(colors["bar_track"])))
+                painter.setBrush(QBrush(QColor(colors["chart_track"])))
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawRoundedRect(QRectF(bar_x, bar_y, bar_max_w, bar_h), 3.0, 3.0)
 
                 fill_w = max(0.0, d.size / maximum * bar_max_w)
                 if fill_w > 0.0:
-                    painter.setBrush(QBrush(QColor(category_color(d.category))))
+                    painter.setBrush(QBrush(QColor(colors["bar_fill"])))
                     painter.drawRoundedRect(QRectF(bar_x, bar_y, fill_w, bar_h), 3.0, 3.0)
 
-                painter.setPen(QColor(colors["fg_dim"]))
+                painter.setPen(QColor(colors["muted_text"]))
                 painter.drawText(
                     QRectF(bar_x + bar_max_w + 6.0, y, size_col_w - 6.0, self._ROW_H),
                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
@@ -274,7 +274,7 @@ if _PYSIDE6_AVAILABLE:
             self._legend_scroll.setWidgetResizable(True)
             self._legend_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
             self._legend_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            self._legend_scroll.setStyleSheet(f"background: {colors['bg_panel']};")
+            self._legend_scroll.setStyleSheet(f"background: {colors['chart_bg']};")
             self._legend = _LegendWidget()
             self._legend_scroll.setWidget(self._legend)
             self._legend_scroll.setMaximumHeight(220)
@@ -298,7 +298,7 @@ if _PYSIDE6_AVAILABLE:
             self._bars_scroll.setWidgetResizable(True)
             self._bars_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
             self._bars_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            self._bars_scroll.setStyleSheet(f"background: {colors['bg_panel']};")
+            self._bars_scroll.setStyleSheet(f"background: {colors['chart_bg']};")
             self._bars = _BarsWidget()
             self._bars_scroll.setWidget(self._bars)
             right_layout.addWidget(self._bars_scroll)
@@ -313,8 +313,8 @@ if _PYSIDE6_AVAILABLE:
             """Refresh inline styles and repaint after a theme change."""
             colors = gui_theme.get_current_colors()
             accent = colors["fg_accent"]
-            bg = colors["bg_panel"]
-            dim = colors["fg_dim"]
+            bg = colors["chart_bg"]
+            dim = colors["muted_text"]
 
             self._title_cat.setStyleSheet(
                 f"color: {accent}; font-weight: bold; padding-bottom: 2px;"
