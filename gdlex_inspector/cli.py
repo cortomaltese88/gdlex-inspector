@@ -23,10 +23,35 @@ READONLY_NOTICE = "[READ-ONLY] No files were modified or deleted."
 
 def _print_result(result, top_n: int) -> None:
     print()
-    print(f"  Path:     {result.root_path}")
-    print(f"  Total:    {_fmt_size(result.total_size)}")
-    print(f"  Files:    {result.total_files}")
-    print(f"  Dirs:     {result.total_dirs}")
+    if result.mount_info:
+        mount = result.mount_info
+        usage = result.volume_usage
+        print("  Remote / mounted volume:")
+        print(f"    Source:  {mount.get('source') or mount.get('device') or 'unknown'}")
+        print(f"    Mount:   {mount.get('mount_point', 'unknown')}")
+        print(f"    FS:      {mount.get('fs_type', 'unknown')}")
+        if usage:
+            print(f"    Total:   {_fmt_size(usage['total_bytes'])}")
+            print(
+                f"    Used:    {_fmt_size(usage['used_bytes'])} "
+                f"({usage['percent_used']:.0f}%)"
+            )
+            print(f"    Free:    {_fmt_size(usage['free_bytes'])}")
+        print()
+        print("  Scanned path:")
+        print(f"    Path:    {result.root_path}")
+        print(f"    Total:   {_fmt_size(result.total_size)}")
+        print(f"    Files:   {result.total_files}")
+        print(f"    Dirs:    {result.total_dirs}")
+        if result.scan_scope_warning:
+            print()
+            print("  Warning:")
+            print(f"    {result.scan_scope_warning}")
+    else:
+        print(f"  Path:     {result.root_path}")
+        print(f"  Total:    {_fmt_size(result.total_size)}")
+        print(f"  Files:    {result.total_files}")
+        print(f"  Dirs:     {result.total_dirs}")
     if result.issues:
         print(f"  Skipped:  {len(result.issues)} paths (permission denied or errors)")
     print()

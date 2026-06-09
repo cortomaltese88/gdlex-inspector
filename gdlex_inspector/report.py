@@ -54,6 +54,24 @@ h2 { color: #39ff14; font-size: 1.1em; border-bottom: 1px solid #1a4d1a; padding
     border-radius: 6px;
     padding: 14px;
 }
+.scope-card {
+    background: #0b160b;
+    border: 1px solid #1a4d1a;
+    border-radius: 6px;
+    padding: 14px;
+    margin: 18px 0;
+}
+.scope-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 8px 18px;
+}
+.scope-warning {
+    color: #ffcc00;
+    border-left: 3px solid #ffcc00;
+    padding-left: 10px;
+    margin: 14px 0 0;
+}
 .summary-label { color: #6af06a; font-size: 0.82em; }
 .summary-value { color: #e0ffe0; font-size: 1.35em; font-weight: bold; margin-top: 5px; }
 .charts-grid {
@@ -261,6 +279,9 @@ def to_json(result: ScanResult) -> str:
         "total_dirs": result.total_dirs,
         "backend_used": result.backend_used,
         "platform_info": result.platform_info,
+        "mount_info": result.mount_info,
+        "volume_usage": result.volume_usage,
+        "scan_scope_warning": result.scan_scope_warning,
         "top_files": [_file_entry(f) for f in result.top_files],
         "top_dirs": [_dir_entry(d) for d in result.top_dirs],
         "extensions": [
@@ -408,6 +429,42 @@ def to_html(result: ScanResult) -> str:
 <tbody>{rows_issues}</tbody></table>
 """
 
+    scope_section = ""
+    if result.mount_info:
+        mount = result.mount_info
+        usage = result.volume_usage
+        source = escape(str(mount.get("source") or mount.get("device") or "unknown"))
+        mount_point = escape(str(mount.get("mount_point", "unknown")))
+        fs_type = escape(str(mount.get("fs_type", "unknown")))
+        volume_details = ""
+        if usage:
+            volume_details = (
+                f"<div><b>Volume totale:</b> {_fmt_size(usage['total_bytes'])}</div>"
+                f"<div><b>Volume usato:</b> {_fmt_size(usage['used_bytes'])} "
+                f"({usage['percent_used']:.0f}%)</div>"
+                f"<div><b>Volume libero:</b> {_fmt_size(usage['free_bytes'])}</div>"
+            )
+        warning = ""
+        if result.scan_scope_warning:
+            warning = (
+                '<p class="scope-warning"><b>Attenzione:</b> '
+                f"{escape(result.scan_scope_warning)}</p>"
+            )
+        scope_section = f"""
+<section class="scope-card" aria-label="Volume e percorso scansionato">
+  <h2>Volume / percorso scansionato</h2>
+  <div class="scope-details">
+    <div><b>Source remoto:</b> <span class="path">{source}</span></div>
+    <div><b>Mount locale:</b> <span class="path">{mount_point}</span></div>
+    <div><b>Filesystem:</b> {fs_type}</div>
+    {volume_details}
+    <div><b>Dati visibili nella scansione:</b> {_fmt_size(result.total_size)}</div>
+    <div><b>Percorso selezionato:</b> <span class="path">{escape(result.root_path)}</span></div>
+  </div>
+  {warning}
+</section>
+"""
+
     return f"""<!DOCTYPE html>
 <html lang="it">
 <head>
@@ -430,6 +487,7 @@ def to_html(result: ScanResult) -> str:
   <div class="summary-card"><div class="summary-label">Cartelle totali</div><div class="summary-value">{result.total_dirs}</div></div>
   <div class="summary-card"><div class="summary-label">Percorsi non accessibili</div><div class="summary-value">{len(result.issues)}</div></div>
 </section>
+{scope_section}
 <p style="color:#6af06a; font-size:0.85em;">
   &#x26A0;&#xFE0F; Questo report è solo diagnostico. Nessun file è stato modificato o cancellato.
   La sensibilità indica il rischio di rimozione o modifica, non la dimensione.

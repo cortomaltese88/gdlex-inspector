@@ -163,6 +163,9 @@ class TestToCsvGeneration(unittest.TestCase):
         self.assertIsInstance(data["top_files"][0]["size"], int)
         self.assertEqual(data["top_files"][0]["risk_level"], "critical")
         self.assertNotIn("sensitivity", data["top_files"][0])
+        self.assertIn("mount_info", data)
+        self.assertIn("volume_usage", data)
+        self.assertIn("scan_scope_warning", data)
 
 
 class TestCsvCLI(unittest.TestCase):

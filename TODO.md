@@ -39,6 +39,10 @@
 
 ## Remoto
 
+- [x] Rilevare mount SMB/CIFS e distinguere volume remoto da dati scansionati
+- [ ] Progettare helper Windows remoto
+- [ ] Valutare supporto WinRM/SSH per diagnosi Windows
+- [ ] Aggiungere profilo `remote-smb-diagnostic`
 - [ ] Progettare connessione SSH remota
 - [ ] Aggiungere profili remoti con UI
 - [ ] Progettare scansione remota via SSH

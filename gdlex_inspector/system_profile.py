@@ -5,8 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 import platform as platform_module
+import shutil
 import socket
-from typing import Mapping
+from typing import Callable, Mapping
 
 
 _LOCAL_LINUX_FS = {
@@ -14,7 +15,8 @@ _LOCAL_LINUX_FS = {
 }
 _WINDOWS_FS = {"ntfs", "ntfs3"}
 _REMOVABLE_FS = {"exfat", "iso9660", "udf", "vfat"}
-_NETWORK_FS = {"cifs", "nfs", "nfs4", "smb3", "sshfs"}
+_NETWORK_FS = {"cifs", "fuse.sshfs", "nfs", "nfs4", "smb3", "sshfs"}
+_SMB_FS = {"cifs", "smb3"}
 _TEMPORARY_FS = {"devtmpfs", "tmpfs"}
 _VIRTUAL_FS = {
     "autofs", "cgroup", "cgroup2", "debugfs", "devpts", "efivarfs",
@@ -42,11 +44,14 @@ class MountInfo:
     is_remote: bool
     is_virtual: bool
     note: str | None = None
+    remote_host: str | None = None
+    share_name: str | None = None
 
     def to_dict(self) -> dict:
         return {
             "mount_point": self.mount_point,
             "device": self.device,
+            "source": self.device,
             "fs_type": self.fs_type,
             "options": list(self.options),
             "role": self.role,
@@ -54,6 +59,8 @@ class MountInfo:
             "is_remote": self.is_remote,
             "is_virtual": self.is_virtual,
             "note": self.note,
+            "remote_host": self.remote_host,
+            "share_name": self.share_name,
         }
 
 
@@ -144,6 +151,27 @@ def _unescape_mount_field(value: str) -> str:
     return value
 
 
+def _remote_share_parts(source: str) -> tuple[str | None, str | None]:
+    normalized = source.replace("\\", "/")
+    if not normalized.startswith("//"):
+        return None, None
+    parts = [part for part in normalized[2:].split("/") if part]
+    host = parts[0] if parts else None
+    share = parts[1] if len(parts) > 1 else None
+    return host, share
+
+
+def _format_iec_size(size: int) -> str:
+    value = float(size)
+    if abs(value) < 1024:
+        return f"{size} B"
+    for unit in ("KiB", "MiB", "GiB", "TiB"):
+        value /= 1024.0
+        if abs(value) < 1024.0:
+            return f"{value:.1f} {unit}"
+    return f"{value / 1024.0:.1f} PiB"
+
+
 def classify_fs_type(fs_type: str) -> str:
     """Group a filesystem type into a broad family."""
     normalized = fs_type.lower()
@@ -228,6 +256,7 @@ def parse_proc_mounts(text: str) -> list[MountInfo]:
         fs_type = _unescape_mount_field(fields[2])
         options = [_unescape_mount_field(option) for option in fields[3].split(",")]
         role = classify_mount_role(mount_point, device, fs_type, options)
+        remote_host, share_name = _remote_share_parts(device)
         mounts.append(MountInfo(
             mount_point=mount_point,
             device=device,
@@ -237,20 +266,149 @@ def parse_proc_mounts(text: str) -> list[MountInfo]:
             is_read_only="ro" in options,
             is_remote=role in {"network", "cloud_fuse"},
             is_virtual=role in {"container", "temporary", "virtual"},
+            remote_host=remote_host,
+            share_name=share_name,
+        ))
+    return mounts
+
+
+def parse_mountinfo(text: str) -> list[MountInfo]:
+    """Parse Linux /proc/self/mountinfo content."""
+    mounts = []
+    for line in text.splitlines():
+        fields = line.split()
+        try:
+            separator = fields.index("-")
+        except ValueError:
+            continue
+        if separator < 6 or len(fields) <= separator + 3:
+            continue
+
+        mount_point = _unescape_mount_field(fields[4])
+        mount_options = fields[5].split(",")
+        fs_type = _unescape_mount_field(fields[separator + 1])
+        device = _unescape_mount_field(fields[separator + 2])
+        super_options = fields[separator + 3].split(",")
+        options = [
+            _unescape_mount_field(option)
+            for option in dict.fromkeys(mount_options + super_options)
+        ]
+        role = classify_mount_role(mount_point, device, fs_type, options)
+        remote_host, share_name = _remote_share_parts(device)
+        mounts.append(MountInfo(
+            mount_point=mount_point,
+            device=device,
+            fs_type=fs_type,
+            options=options,
+            role=role,
+            is_read_only="ro" in mount_options,
+            is_remote=role in {"network", "cloud_fuse"},
+            is_virtual=role in {"container", "temporary", "virtual"},
+            remote_host=remote_host,
+            share_name=share_name,
         ))
     return mounts
 
 
 def list_mounts(os_family: str | None = None) -> list[MountInfo]:
-    """List Linux mounts using /proc/mounts; return an empty list elsewhere."""
+    """List Linux mounts, preferring /proc/self/mountinfo."""
     family = os_family if os_family is not None else detect_os_family()
     if family != "linux":
         return []
+    try:
+        with open(
+            "/proc/self/mountinfo", encoding="utf-8", errors="replace"
+        ) as handle:
+            mounts = parse_mountinfo(handle.read())
+            if mounts:
+                return mounts
+    except OSError:
+        pass
     try:
         with open("/proc/mounts", encoding="utf-8", errors="replace") as handle:
             return parse_proc_mounts(handle.read())
     except OSError:
         return []
+
+
+def find_mount_for_path(
+    path: str,
+    mounts: list[MountInfo] | None = None,
+) -> MountInfo | None:
+    """Return the most specific mount containing path."""
+    target = os.path.realpath(os.path.abspath(path))
+    candidates = []
+    for mount in mounts if mounts is not None else list_mounts():
+        mount_point = os.path.realpath(os.path.abspath(mount.mount_point))
+        try:
+            if os.path.commonpath((target, mount_point)) == mount_point:
+                candidates.append((len(mount_point), mount))
+        except ValueError:
+            continue
+    return max(candidates, key=lambda item: item[0])[1] if candidates else None
+
+
+def get_volume_usage(
+    path: str,
+    disk_usage: Callable[[str], object] = shutil.disk_usage,
+) -> dict:
+    """Return mounted-volume usage separately from scanned file totals."""
+    usage = disk_usage(path)
+    total = int(usage.total)
+    used = int(usage.used)
+    free = int(usage.free)
+    return {
+        "total_bytes": total,
+        "used_bytes": used,
+        "free_bytes": free,
+        "percent_used": (used / total * 100.0) if total else 0.0,
+    }
+
+
+def build_scan_scope_warning(
+    mount: MountInfo | None,
+    volume_usage: Mapping[str, int | float],
+    scanned_total: int,
+    heavily_used_percent: float = 80.0,
+    small_scope_ratio: float = 0.20,
+) -> str | None:
+    """Warn when an SMB scan accounts for little of a heavily used volume."""
+    if mount is None or mount.fs_type.lower() not in _SMB_FS:
+        return None
+    used_bytes = int(volume_usage.get("used_bytes", 0))
+    percent_used = float(volume_usage.get("percent_used", 0.0))
+    if (
+        used_bytes > 0
+        and percent_used > heavily_used_percent
+        and scanned_total < used_bytes * small_scope_ratio
+    ):
+        return (
+            f"The mounted remote volume reports {_format_iec_size(used_bytes)} "
+            f"used, while the selected scan sees only "
+            f"{_format_iec_size(scanned_total)}. You may be scanning a partial "
+            "share or folder rather than the entire remote disk. Scan a broader "
+            "share or run the tool locally with appropriate access for a complete "
+            "diagnosis."
+        )
+    return None
+
+
+def get_remote_scan_context(
+    path: str,
+    scanned_total: int,
+    mounts: list[MountInfo] | None = None,
+    disk_usage: Callable[[str], object] = shutil.disk_usage,
+) -> tuple[dict, dict, str | None]:
+    """Return mount and volume metadata when path is on a remote mount."""
+    mount = find_mount_for_path(path, mounts)
+    if mount is None or not mount.is_remote:
+        return {}, {}, None
+    try:
+        usage = get_volume_usage(path, disk_usage=disk_usage)
+    except OSError:
+        usage = {}
+    warning = build_scan_scope_warning(mount, usage, scanned_total)
+    return mount.to_dict(), usage, warning
 
 
 def detect_system_profile() -> SystemProfile:

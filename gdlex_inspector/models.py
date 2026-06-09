@@ -63,3 +63,6 @@ class ScanResult:
     scan_timestamp: Optional[str] = None
     platform_info: dict = field(default_factory=dict)
     backend_used: str = "python"
+    mount_info: dict = field(default_factory=dict)
+    volume_usage: dict = field(default_factory=dict)
+    scan_scope_warning: Optional[str] = None

@@ -137,6 +137,27 @@ class TestHtmlReportCharts(unittest.TestCase):
         self.assertIn('id="category-chart"', html)
         self.assertIn('id="top-directories-chart"', html)
 
+    def test_html_contains_remote_volume_scope_and_warning(self):
+        result = _make_result()
+        result.mount_info = {
+            "source": "//192.168.178.25/Users",
+            "mount_point": "/home/marco/mnt/pc-marco-users",
+            "fs_type": "cifs",
+        }
+        result.volume_usage = {
+            "total_bytes": 238 * 1024**3,
+            "used_bytes": 219 * 1024**3,
+            "free_bytes": 19 * 1024**3,
+            "percent_used": 92.0,
+        }
+        result.scan_scope_warning = "The selected path is a partial share."
+        html = to_html(result)
+        self.assertIn("Volume / percorso scansionato", html)
+        self.assertIn("//192.168.178.25/Users", html)
+        self.assertIn("Dati visibili nella scansione", html)
+        self.assertIn("219.0 GiB (92%)", html)
+        self.assertIn("partial share", html)
+
 
 if __name__ == "__main__":
     unittest.main()

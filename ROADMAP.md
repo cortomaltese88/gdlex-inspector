@@ -81,6 +81,10 @@
 
 ## Fase 5 — Controllo remoto
 
+- [x] Rilevamento SMB/CIFS e warning per share o cartelle parziali *(Step 4C)*
+- [ ] Helper Windows remoto per raccolta diagnostica
+- [ ] Supporto WinRM/SSH per diagnosi Windows
+- [ ] Profilo `remote-smb-diagnostic`
 - [ ] Profili PC remoti (nome, host, porta, utente, chiave SSH)
 - [ ] Connessione SSH tramite comando di sistema
 - [ ] Remote check (ping/stato)

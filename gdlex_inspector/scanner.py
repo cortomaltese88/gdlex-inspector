@@ -22,6 +22,7 @@ from .models import (
     ScanResult,
 )
 from .risk import classify_risk
+from .system_profile import get_remote_scan_context
 
 
 def parse_size(value: str) -> int:
@@ -207,5 +208,11 @@ def scan_directory(
         key=lambda x: x.total_size,
         reverse=True,
     )
+
+    (
+        result.mount_info,
+        result.volume_usage,
+        result.scan_scope_warning,
+    ) = get_remote_scan_context(result.root_path, result.total_size)
 
     return result

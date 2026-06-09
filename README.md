@@ -182,6 +182,24 @@ python -m gdlex_inspector scan /mnt/c/Users/Utente --top 50 --min-size 500M
 python -m gdlex_inspector scan . --json /mnt/c/Users/Utente/Desktop/report.json --html /mnt/c/Users/Utente/Desktop/report.html
 ```
 
+## Scansione di share SMB/CIFS
+
+Su Linux una share Windows montata via CIFS/SMB espone soltanto i file e le
+cartelle pubblicati dalla share e accessibili con le credenziali correnti.
+`gdlex-inspector` rileva il mount remoto, mostra separatamente le statistiche
+del volume montato e i dati effettivamente visibili nel percorso scansionato,
+e segnala quando questi valori indicano probabilmente una scansione parziale.
+
+Il comando `df` può riportare l'uso dell'intero volume remoto anche se la share
+espone solo una sua parte. Per esempio, scansionare una share chiamata `Users`
+non equivale a scansionare tutto `C:\`: file di sistema, altri profili e
+directory non condivise possono restare invisibili.
+
+Per una diagnosi completa di un PC Windows occorre esporre una share più ampia,
+usare la share amministrativa `C$` con credenziali adeguate, oppure eseguire il
+tool localmente sul computer remoto. Tutte le operazioni di rilevamento e
+scansione restano read-only.
+
 ## Esempi Windows nativo
 
 ```bash
